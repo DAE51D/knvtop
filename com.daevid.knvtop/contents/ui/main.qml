@@ -99,24 +99,9 @@ PlasmoidItem {
         PlasmaDBus.SessionBus.asyncCall(msg, (reply) => {
             try {
                 if (!reply.isError && reply.values && reply.values.length > 0) {
-                    var data = reply.values[0];
-                    var s = {
-                        gpu: data.gpu || {},
-                        sys: data.sys || {},
-                        llm: data.llm || {}
-                    };
-                    function fixNulls(obj) {
-                        if (obj === null || obj === undefined) return null;
-                        if (typeof obj === "string" && obj === "null") return null;
-                        if (Array.isArray(obj)) return obj.map(fixNulls);
-                        if (typeof obj === "object") {
-                            var out = {};
-                            for (var k in obj) out[k] = fixNulls(obj[k]);
-                            return out;
-                        }
-                        return obj;
-                    }
-                    pushSample(fixNulls(s));
+                    var json = reply.values[0];
+                    var s = JSON.parse(json);
+                    pushSample(s);
                     pollerAlive = true;
                 }
             } catch (e) {

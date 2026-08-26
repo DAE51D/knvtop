@@ -120,19 +120,12 @@ class KnvtopDBusObject(dbus.service.Object):
         super().__init__(bus, obj_path)
         self._bus = bus
 
-    @dbus.service.method(
-        "com.daevid.knvtop.Sample", in_signature="", out_signature="a{sv}"
-    )
+    @dbus.service.method("com.daevid.knvtop.Sample", in_signature="", out_signature="s")
     def Get(self):
+        import json
+
         s = service.get_sample()
-        return dbus.Dictionary(
-            {
-                "gpu": _dict_to_dbus(s.get("gpu", {})),
-                "sys": _dict_to_dbus(s.get("sys", {})),
-                "llm": _llm_to_dbus(s.get("llm", {})),
-            },
-            signature="sv",
-        )
+        return dbus.String(json.dumps(s))
 
     @dbus.service.method("com.daevid.knvtop.Status", in_signature="", out_signature="b")
     def IsAlive(self):
