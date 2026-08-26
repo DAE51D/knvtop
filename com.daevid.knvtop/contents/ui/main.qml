@@ -310,11 +310,11 @@ PlasmoidItem {
     }
 
     // ---- hover / tooltip ---------------------------------------------
-    Plasmoid.toolTipMainText: "GPU " + fmt(gpu.util, "%") + "  "
+    toolTipMainText: "GPU " + fmt(gpu.util, "%") + "  "
         + fmt((gpu.mem_used !== null && gpu.mem_total) ? gpu.mem_used * 100 / gpu.mem_total : null, "%")
         + " mem  " + fmt(gpu.temp, "°C", 1) + "  " + fmt(gpu.power_w, "W", 1)
         + "  CPU " + fmt(sys.cpu, "%", 1)
-    Plasmoid.toolTipSubText: "RAM " + mb(sys.ram_used) + "/" + mb(sys.ram_total)
+    toolTipSubText: "RAM " + mb(sys.ram_used) + "/" + mb(sys.ram_total)
         + "  load " + sys.load1.toFixed(2)
         + (llama.length ? "  " + llama.length + " llama.cpp" : "")
         + (ollamaModels.length ? "  " + ollamaModels.length + " ollama model(s)" : "")
