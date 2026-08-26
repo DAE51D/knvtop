@@ -48,7 +48,7 @@ PlasmoidItem {
 
     function mb(v) {
         if (v === null || v === undefined) return "N/A";
-        return (v / 1024).toFixed(1) + " GiB";
+        return (v / 1073741824).toFixed(1) + " GiB";
     }
 
     function pushSample(s) {
@@ -71,8 +71,8 @@ PlasmoidItem {
         push(histPower, (gpu.power_w !== null && gpu.power_cap_w)
                          ? Math.min(100, gpu.power_w * 100 / gpu.power_cap_w) : null);
         push(histCpu, sys.cpu);
-        compactGraph.requestPaint();
-        bigGraph.requestPaint();
+        if (compactGraph) compactGraph.requestPaint();
+        if (bigGraph) bigGraph.requestPaint();
     }
 
     function restartPoller() {
@@ -120,6 +120,16 @@ PlasmoidItem {
         onTriggered: root.poll()
     }
 
+    Timer {
+        interval: 2000
+        repeat: true
+        running: true
+        onTriggered: {
+            if (compactGraph) compactGraph.requestPaint();
+            if (bigGraph) bigGraph.requestPaint();
+        }
+    }
+
     // ---- graph drawing helpers ---------------------------------------
     function drawLines(ctx, w, h) {
         function px(i) { return 2 + (w - 4) * i / (windowSize - 1); }
@@ -165,6 +175,8 @@ PlasmoidItem {
 
     // ---- compact representation: the graph ---------------------------
     compactRepresentation: Item {
+        implicitWidth: inPanel ? 200 : 320
+        implicitHeight: inPanel ? 80 : 180
         width: inPanel ? 200 : 320
         height: inPanel ? 80 : 180
 
