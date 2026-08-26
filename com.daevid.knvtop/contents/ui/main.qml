@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Shapes
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.plasmoid
 import org.kde.plasma.workspace.dbus as PlasmaDBus
@@ -124,7 +125,7 @@ PlasmoidItem {
         onTriggered: root.poll()
     }
 
-    // ---- compact: 5 vertical bars + labels ---------------------------
+    // ---- compact: line graph (Shape/Path, no Canvas) ------------------
     compactRepresentation: Item {
         id: compact
         Layout.fillWidth: inPanel
@@ -136,54 +137,84 @@ PlasmoidItem {
         width: inPanel ? 220 : 360
         height: inPanel ? 70 : 160
 
-        RowLayout {
+        Rectangle {
             anchors.fill: parent
-            anchors.margins: 4
-            spacing: 3
+            anchors.margins: 2
+            color: "#101418"
+            radius: 3
 
+            function xPos(i) { return 2 + (compact.width - 4) * i / (root.windowSize - 1); }
+            function yPos(v) { return compact.height - 2 - (compact.height - 4) * v / 100; }
+
+            // 5 line paths, one per metric
             Repeater {
                 model: 5
-                delegate: ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    spacing: 1
+                delegate: Shape {
+                    id: lineShape
+                    anchors.fill: parent
+                    ShapePath {
+                        id: sp
+                        strokeColor: modelData === 0 ? "#4d9fff"
+                             : modelData === 1 ? "#e8c33a"
+                             : modelData === 2 ? "#b07fe8"
+                             : modelData === 3 ? "#3ddc84"
+                             : "#ff8c42"
+                        strokeWidth: 1.5
+                        fillRule: ShapePath.NoFill
 
-                    // bar
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
+                        function val(i) {
+                            var arr = modelData === 0 ? root.histUtil
+                                    : modelData === 1 ? root.histMem
+                                    : modelData === 2 ? root.histTemp
+                                    : modelData === 3 ? root.histPower
+                                    : root.histCpu;
+                            if (!arr || arr.length === 0) return null;
+                            var idx = arr.length - root.windowSize + i;
+                            if (idx < 0) return null;
+                            var v = arr[idx];
+                            if (v === null || v === undefined) return null;
+                            if (modelData === 2) return root.pctNorm(v, root.tempFloor, root.tempMax);
+                            return v;
+                        }
 
+                        Repeater {
+                            model: root.windowSize
+                            delegate: PathLine {
+                                x: compact.xPos(index)
+                                y: compact.yPos(sp.val(index) !== null ? sp.val(index) : 0)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // legend
+            Row {
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.leftMargin: 4
+                spacing: 6
+                Repeater {
+                    model: 5
+                    delegate: Row {
+                        spacing: 1
                         Rectangle {
-                            width: Math.max(3, parent.width - 2)
-                            height: parent.height * (
-                                modelData === 0 ? root.latest(root.histUtil) / 100
-                                : modelData === 1 ? root.latest(root.histMem) / 100
-                                : modelData === 2 ? root.pctNorm(root.latest(root.histTemp), root.tempFloor, root.tempMax) / 100
-                                : modelData === 3 ? root.latest(root.histPower) / 100
-                                : root.latest(root.histCpu) / 100
-                            )
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            anchors.bottom: parent.bottom
+                            width: 6; height: 6
                             color: modelData === 0 ? "#4d9fff"
                                  : modelData === 1 ? "#e8c33a"
                                  : modelData === 2 ? "#b07fe8"
                                  : modelData === 3 ? "#3ddc84"
                                  : "#ff8c42"
-                            radius: 2
                         }
-                    }
-
-                    // label
-                    Label {
-                        Layout.fillWidth: true
-                        horizontalAlignment: Text.AlignHCenter
-                        text: modelData === 0 ? "GPU"
-                             : modelData === 1 ? "MEM"
-                             : modelData === 2 ? "TMP"
-                             : modelData === 3 ? "PWR"
-                             : "CPU"
-                        font.pointSize: 7
-                        color: "#8a9199"
+                        Label {
+                            text: modelData === 0 ? "GPU"
+                                 : modelData === 1 ? "MEM"
+                                 : modelData === 2 ? "TMP"
+                                 : modelData === 3 ? "PWR"
+                                 : "CPU"
+                            font.pointSize: 7
+                            color: "#8a9199"
+                        }
                     }
                 }
             }
