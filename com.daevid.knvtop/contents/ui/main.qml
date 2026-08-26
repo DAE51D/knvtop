@@ -71,7 +71,7 @@ PlasmoidItem {
         push(histPower, (gpu.power_w !== null && gpu.power_cap_w)
                          ? Math.min(100, gpu.power_w * 100 / gpu.power_cap_w) : null);
         push(histCpu, sys.cpu);
-        graph.requestPaint();
+        compactGraph.requestPaint();
         bigGraph.requestPaint();
     }
 
@@ -102,7 +102,6 @@ PlasmoidItem {
                     sys: data.sys || {},
                     llm: data.llm || {}
                 };
-                // convert "null" strings back to null
                 function fixNulls(obj) {
                     if (obj === null || obj === undefined) return null;
                     if (typeof obj === "string" && obj === "null") return null;
@@ -132,86 +131,77 @@ PlasmoidItem {
         onTriggered: root.poll()
     }
 
-    // ---- graph ------------------------------------------------------
-    function drawLine(ctx, data, color, yOf) {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        var started = false;
-        for (var i = 0; i < windowSize; i++) {
-            var v = data[i];
-            if (v === null || v === undefined) { started = false; continue; }
-            var x = plotX(i);
-            var y = plotY(yOf(v));
-            if (!started) { ctx.moveTo(x, y); started = true; }
-            else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-    }
-
-    function plotX(i) { return 2 + (width - 4) * i / (windowSize - 1); }
-    function plotY(v) { return height - 2 - (height - 4) * v / 100; }
-
-    Canvas {
-        id: graph
-        width: inPanel ? 160 : 320
-        height: inPanel ? 64 : 180
-        anchors.centerIn: parent
-
-        onPaint: {
-            var ctx = getContext("2d");
-            ctx.reset();
-            ctx.fillStyle = "#101418";
-            ctx.fillRect(0, 0, width, height);
-
-            // grid
-            ctx.strokeStyle = "#2a2f35";
-            ctx.lineWidth = 1;
+    // ---- graph drawing helpers ---------------------------------------
+    function drawLines(ctx, w, h) {
+        function px(i) { return 2 + (w - 4) * i / (windowSize - 1); }
+        function py(v) { return h - 2 - (h - 4) * v / 100; }
+        function line(data, color, yOf) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
-            for (var g = 0; g <= 4; g++) {
-                var y = plotY(g * 25);
-                ctx.moveTo(2, y); ctx.lineTo(width - 2, y);
+            var started = false;
+            for (var i = 0; i < windowSize; i++) {
+                var v = data[i];
+                if (v === null || v === undefined) { started = false; continue; }
+                var x = px(i);
+                var y = py(yOf(v));
+                if (!started) { ctx.moveTo(x, y); started = true; }
+                else ctx.lineTo(x, y);
             }
             ctx.stroke();
+        }
+        // grid
+        ctx.strokeStyle = "#2a2f35";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (var g = 0; g <= 4; g++) {
+            var y = py(g * 25);
+            ctx.moveTo(2, y); ctx.lineTo(w - 2, y);
+        }
+        ctx.stroke();
+        // axis labels
+        ctx.fillStyle = "#8a9199";
+        ctx.font = "9px sans-serif";
+        ctx.textAlign = "left";
+        for (var t = 0; t <= 100; t += 25) {
+            ctx.fillText(String(t), 3, py(t) - 2);
+        }
+        // lines: util blue, mem yellow, temp purple, power green, cpu orange
+        line(histUtil, "#4d9fff", function(v) { return v; });
+        line(histMem,  "#e8c33a", function(v) { return v; });
+        line(histTemp, "#b07fe8", function(v) { return (v - tempFloor) * 100 / (tempMax - tempFloor); });
+        line(histPower, "#3ddc84", function(v) { return v; });
+        line(histCpu,  "#ff8c42", function(v) { return v; });
+    }
 
-            // axis labels
-            ctx.fillStyle = "#8a9199";
-            ctx.font = "9px sans-serif";
-            ctx.textAlign = "left";
-            for (var t = 0; t <= 100; t += 25) {
-                ctx.fillText(String(t), 3, plotY(t) - 2);
+    // ---- compact representation: the graph ---------------------------
+    compactRepresentation: Item {
+        width: inPanel ? 160 : 320
+        height: inPanel ? 64 : 180
+
+        Canvas {
+            id: compactGraph
+            anchors.fill: parent
+            onPaint: {
+                var ctx = getContext("2d");
+                ctx.reset();
+                ctx.fillStyle = "#101418";
+                ctx.fillRect(0, 0, width, height);
+                drawLines(ctx, width, height);
+                // legend
+                ctx.font = "9px sans-serif";
+                ctx.textAlign = "left";
+                var lx = 14, ly = 10;
+                ctx.fillStyle = "#4d9fff"; ctx.fillText("GPU %", lx, ly);
+                ctx.fillStyle = "#e8c33a"; ctx.fillText("GPU mem%", lx, ly + 11);
+                ctx.fillStyle = "#b07fe8"; ctx.fillText("GPU temp(c)", lx, ly + 22);
+                ctx.fillStyle = "#3ddc84"; ctx.fillText("GPU power%", lx, ly + 33);
+                ctx.fillStyle = "#ff8c42"; ctx.fillText("CPU %", lx, ly + 44);
             }
-            ctx.textAlign = "center";
-            ctx.fillText("-21s", plotX(0), height - 3);
-            ctx.fillText("-10s", plotX(10), height - 3);
-            ctx.fillText("0s", plotX(20), height - 3);
-
-            // lines: util blue, mem yellow, temp purple (30..100 C), power green, cpu orange
-            drawLine(ctx, histUtil, "#4d9fff", function(v) { return v; });
-            drawLine(ctx, histMem,  "#e8c33a", function(v) { return v; });
-            drawLine(ctx, histTemp, "#b07fe8", function(v) { return (v - tempFloor) * 100 / (tempMax - tempFloor); });
-            drawLine(ctx, histPower, "#3ddc84", function(v) { return v; });
-            drawLine(ctx, histCpu,  "#ff8c42", function(v) { return v; });
-
-            // legend
-            ctx.font = "9px sans-serif";
-            ctx.textAlign = "left";
-            var lx = 14, ly = 10;
-            ctx.fillStyle = "#4d9fff"; ctx.fillText("GPU %", lx, ly);
-            ctx.fillStyle = "#e8c33a"; ctx.fillText("GPU mem%", lx, ly + 11);
-            ctx.fillStyle = "#b07fe8"; ctx.fillText("GPU temp(c)", lx, ly + 22);
-            ctx.fillStyle = "#3ddc84"; ctx.fillText("GPU power%", lx, ly + 33);
-            ctx.fillStyle = "#ff8c42"; ctx.fillText("CPU %", lx, ly + 44);
         }
     }
 
-    // ---- representations --------------------------------------------
-    compactRepresentation: Item {
-        width: inPanel ? graph.width : graph.width + 8
-        height: inPanel ? graph.height : graph.height + 8
-        graph
-    }
-
+    // ---- full representation: detail panel ---------------------------
     fullRepresentation: ScrollView {
         width: inPanel ? 420 : 480
         height: inPanel ? 320 : 420
@@ -250,37 +240,7 @@ PlasmoidItem {
                         ctx.reset();
                         ctx.fillStyle = "#101418";
                         ctx.fillRect(0, 0, width, height);
-                        ctx.strokeStyle = "#2a2f35";
-                        ctx.lineWidth = 1;
-                        ctx.beginPath();
-                        for (var g = 0; g <= 4; g++) {
-                            var y = height - 2 - (height - 4) * g * 25 / 100;
-                            ctx.moveTo(2, y); ctx.lineTo(width - 2, y);
-                        }
-                        ctx.stroke();
-                        ctx.fillStyle = "#8a9199";
-                        ctx.font = "9px sans-serif";
-                        ctx.textAlign = "left";
-                        for (var t = 0; t <= 100; t += 25)
-                            ctx.fillText(String(t), 3, height - 2 - (height - 4) * t / 100 - 2);
-                        function line(data, color, yOf) {
-                            ctx.strokeStyle = color; ctx.lineWidth = 1.5;
-                            ctx.beginPath();
-                            var st = false;
-                            for (var i = 0; i < root.windowSize; i++) {
-                                var v = data[i];
-                                if (v === null || v === undefined) { st = false; continue; }
-                                var x = 2 + (width - 4) * i / (root.windowSize - 1);
-                                var y = height - 2 - (height - 4) * yOf(v) / 100;
-                                if (!st) { ctx.moveTo(x, y); st = true; } else ctx.lineTo(x, y);
-                            }
-                            ctx.stroke();
-                        }
-                        line(root.histUtil, "#4d9fff", function(v) { return v; });
-                        line(root.histMem, "#e8c33a", function(v) { return v; });
-                        line(root.histTemp, "#b07fe8", function(v) { return (v - root.tempFloor) * 100 / (root.tempMax - root.tempFloor); });
-                        line(root.histPower, "#3ddc84", function(v) { return v; });
-                        line(root.histCpu, "#ff8c42", function(v) { return v; });
+                        drawLines(ctx, width, height);
                     }
                 }
             }
