@@ -17,7 +17,6 @@ PlasmoidItem {
 
     Plasmoid.backgroundHints: PlasmaCore.Types.DefaultBackground
 
-    // ---- data state -------------------------------------------------
     property var gpu: ({ util: null, mem_used: null, mem_total: null,
                           temp: null, power_w: null, power_cap_w: null })
     property var sys: ({ ram_used: 0, ram_total: 0, swap_used: 0, swap_total: 0,
@@ -27,7 +26,6 @@ PlasmoidItem {
     property var vllm: []
     property var ollamaModels: []
 
-    // 21-second ring buffer, one sample per second
     readonly property int windowSize: 21
     property var histUtil: []
     property var histMem: []
@@ -37,7 +35,6 @@ PlasmoidItem {
 
     property bool pollerAlive: false
 
-    // y-axis ranges
     readonly property int tempMax: 100
     readonly property double tempFloor: 30
 
@@ -49,6 +46,18 @@ PlasmoidItem {
     function mb(v) {
         if (v === null || v === undefined) return "N/A";
         return (v / 1073741824).toFixed(1) + " GiB";
+    }
+
+    function pctNorm(v, floor, max) {
+        if (v === null || v === undefined) return 0;
+        var p = (v - floor) * 100 / (max - floor);
+        return Math.max(0, Math.min(100, p));
+    }
+
+    function latest(arr) {
+        if (!arr || arr.length === 0) return 0;
+        var v = arr[arr.length - 1];
+        return v === null || v === undefined ? 0 : Number(v);
     }
 
     function pushSample(s) {
@@ -71,8 +80,6 @@ PlasmoidItem {
         push(histPower, (gpu.power_w !== null && gpu.power_cap_w)
                          ? Math.min(100, gpu.power_w * 100 / gpu.power_cap_w) : null);
         push(histCpu, sys.cpu);
-        if (compactGraph) compactGraph.requestPaint();
-        if (bigGraph) bigGraph.requestPaint();
     }
 
     function restartPoller() {
@@ -87,7 +94,6 @@ PlasmoidItem {
         PlasmaDBus.SessionBus.asyncCall(msg, () => {}, () => {});
     }
 
-    // ---- data bridge: D-Bus polling ---------------------------------
     function poll() {
         var msg = new PlasmaDBus.dbusMessage({
             service: "com.daevid.knvtop",
@@ -99,8 +105,7 @@ PlasmoidItem {
         PlasmaDBus.SessionBus.asyncCall(msg, (reply) => {
             try {
                 if (!reply.isError && reply.values && reply.values.length > 0) {
-                    var json = reply.values[0];
-                    var s = JSON.parse(json);
+                    var s = JSON.parse(reply.values[0]);
                     pushSample(s);
                     pollerAlive = true;
                 }
@@ -113,86 +118,74 @@ PlasmoidItem {
     }
 
     Timer {
-        id: pollTimer
         interval: 1000
         repeat: true
         running: true
         onTriggered: root.poll()
     }
 
-    Timer {
-        interval: 2000
-        repeat: true
-        running: true
-        onTriggered: {
-            if (compactGraph) compactGraph.requestPaint();
-            if (bigGraph) bigGraph.requestPaint();
-        }
-    }
-
-    // ---- compact representation: the graph ---------------------------
+    // ---- compact: 5 vertical bars + labels ---------------------------
     compactRepresentation: Item {
-        implicitWidth: inPanel ? 260 : 400
-        implicitHeight: inPanel ? 100 : 200
-        width: inPanel ? 260 : 400
-        height: inPanel ? 100 : 200
+        id: compact
+        Layout.fillWidth: inPanel
+        Layout.fillHeight: inPanel
+        Layout.minimumWidth: inPanel ? 160 : 280
+        Layout.minimumHeight: inPanel ? 50 : 120
+        Layout.preferredWidth: inPanel ? 220 : 360
+        Layout.preferredHeight: inPanel ? 70 : 160
+        width: inPanel ? 220 : 360
+        height: inPanel ? 70 : 160
 
-        Canvas {
-            id: compactGraph
+        RowLayout {
             anchors.fill: parent
-            onPaint: {
-                var ctx = getContext("2d");
-                ctx.reset();
-                ctx.fillStyle = "#101418";
-                ctx.fillRect(0, 0, width, height);
-                var ws = root.windowSize;
-                var hu = root.histUtil;
-                var hm = root.histMem;
-                var ht = root.histTemp;
-                var hp = root.histPower;
-                var hc = root.histCpu;
-                var tf = root.tempFloor;
-                var tm = root.tempMax;
-                function px(i) { return 2 + (width - 4) * i / (ws - 1); }
-                function py(v) { return height - 2 - (height - 4) * v / 100; }
-                // grid
-                ctx.strokeStyle = "#2a2f35";
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                for (var g = 0; g <= 4; g++) {
-                    var gy = py(g * 25);
-                    ctx.moveTo(2, gy); ctx.lineTo(width - 2, gy);
-                }
-                ctx.stroke();
-                function draw(data, color, yOf) {
-                    ctx.strokeStyle = color;
-                    ctx.lineWidth = 1.5;
-                    ctx.beginPath();
-                    var st = false;
-                    for (var i = 0; i < ws; i++) {
-                        var v = data[i];
-                        if (v === null || v === undefined) { st = false; continue; }
-                        var x = px(i);
-                        var y = py(yOf(v));
-                        if (!st) { ctx.moveTo(x, y); st = true; }
-                        else ctx.lineTo(x, y);
+            anchors.margins: 4
+            spacing: 3
+
+            Repeater {
+                model: 5
+                delegate: ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    spacing: 1
+
+                    // bar
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+
+                        Rectangle {
+                            width: Math.max(3, parent.width - 2)
+                            height: parent.height * (
+                                modelData === 0 ? root.latest(root.histUtil) / 100
+                                : modelData === 1 ? root.latest(root.histMem) / 100
+                                : modelData === 2 ? root.pctNorm(root.latest(root.histTemp), root.tempFloor, root.tempMax) / 100
+                                : modelData === 3 ? root.latest(root.histPower) / 100
+                                : root.latest(root.histCpu) / 100
+                            )
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            color: modelData === 0 ? "#4d9fff"
+                                 : modelData === 1 ? "#e8c33a"
+                                 : modelData === 2 ? "#b07fe8"
+                                 : modelData === 3 ? "#3ddc84"
+                                 : "#ff8c42"
+                            radius: 2
+                        }
                     }
-                    ctx.stroke();
+
+                    // label
+                    Label {
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        text: modelData === 0 ? "GPU"
+                             : modelData === 1 ? "MEM"
+                             : modelData === 2 ? "TMP"
+                             : modelData === 3 ? "PWR"
+                             : "CPU"
+                        font.pointSize: 7
+                        color: "#8a9199"
+                    }
                 }
-                draw(hu, "#4d9fff", function(v) { return v; });
-                draw(hm, "#e8c33a", function(v) { return v; });
-                draw(ht, "#b07fe8", function(v) { return (v - tf) * 100 / (tm - tf); });
-                draw(hp, "#3ddc84", function(v) { return v; });
-                draw(hc, "#ff8c42", function(v) { return v; });
-                // legend
-                ctx.font = "9px sans-serif";
-                ctx.textAlign = "left";
-                var lx = 14, ly = 0;
-                ctx.fillStyle = "#4d9fff"; ctx.fillText("GPU", lx, ly + 10);
-                ctx.fillStyle = "#e8c33a"; ctx.fillText("MEM", lx + 25, ly + 10);
-                ctx.fillStyle = "#b07fe8"; ctx.fillText("TMP", lx + 50, ly + 10);
-                ctx.fillStyle = "#3ddc84"; ctx.fillText("PWR", lx + 75, ly + 10);
-                ctx.fillStyle = "#ff8c42"; ctx.fillText("CPU", lx + 100, ly + 10);
             }
         }
     }
@@ -224,62 +217,47 @@ PlasmoidItem {
                 }
             }
 
-            Rectangle {
+            // history graph: 5 rows of horizontal bars
+            ColumnLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 140
-                color: "#101418"
-                Canvas {
-                    id: bigGraph
-                    anchors.fill: parent
-                    onPaint: {
-                        var ctx = getContext("2d");
-                        ctx.reset();
-                        ctx.fillStyle = "#101418";
-                        ctx.fillRect(0, 0, width, height);
-                        var ws = root.windowSize;
-                        var hu = root.histUtil;
-                        var hm = root.histMem;
-                        var ht = root.histTemp;
-                        var hp = root.histPower;
-                        var hc = root.histCpu;
-                        var tf = root.tempFloor;
-                        var tm = root.tempMax;
-                        function px(i) { return 2 + (width - 4) * i / (ws - 1); }
-                        function py(v) { return height - 2 - (height - 4) * v / 100; }
-                        ctx.strokeStyle = "#2a2f35";
-                        ctx.lineWidth = 1;
-                        ctx.beginPath();
-                        for (var g = 0; g <= 4; g++) {
-                            var gy = py(g * 25);
-                            ctx.moveTo(2, gy); ctx.lineTo(width - 2, gy);
+                spacing: 2
+                Repeater {
+                    model: 5
+                    delegate: RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+                        Label {
+                            text: modelData === 0 ? "GPU"
+                                 : modelData === 1 ? "MEM"
+                                 : modelData === 2 ? "TMP"
+                                 : modelData === 3 ? "PWR"
+                                 : "CPU"
+                            font.pointSize: 8
+                            color: "#8a9199"
+                            Layout.preferredWidth: 30
                         }
-                        ctx.stroke();
-                        ctx.fillStyle = "#8a9199";
-                        ctx.font = "9px sans-serif";
-                        ctx.textAlign = "left";
-                        for (var t = 0; t <= 100; t += 25) {
-                            ctx.fillText(String(t), 3, py(t) - 2);
-                        }
-                        function draw(data, color, yOf) {
-                            ctx.strokeStyle = color;
-                            ctx.lineWidth = 1.5;
-                            ctx.beginPath();
-                            var st = false;
-                            for (var i = 0; i < ws; i++) {
-                                var v = data[i];
-                                if (v === null || v === undefined) { st = false; continue; }
-                                var x = px(i);
-                                var y = py(yOf(v));
-                                if (!st) { ctx.moveTo(x, y); st = true; }
-                                else ctx.lineTo(x, y);
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 14
+                            Repeater {
+                                model: root.windowSize
+                                delegate: Rectangle {
+                                    width: Math.max(1, parent.width / root.windowSize - 1)
+                                    height: parent.height * (
+                                        (modelData === 0 ? (root.histUtil.length > root.windowSize - 1 - index ? (root.histUtil[root.histUtil.length - 1 - (root.windowSize - 1 - index)] || 0) / 100 : 0)
+                                         : modelData === 1 ? (root.histMem.length > root.windowSize - 1 - index ? (root.histMem[root.histMem.length - 1 - (root.windowSize - 1 - index)] || 0) / 100 : 0)
+                                         : modelData === 2 ? (root.histTemp.length > root.windowSize - 1 - index ? root.pctNorm(root.histTemp[root.histTemp.length - 1 - (root.windowSize - 1 - index)], root.tempFloor, root.tempMax) / 100 : 0)
+                                         : modelData === 3 ? (root.histPower.length > root.windowSize - 1 - index ? (root.histPower[root.histPower.length - 1 - (root.windowSize - 1 - index)] || 0) / 100 : 0)
+                                         : (root.histCpu.length > root.windowSize - 1 - index ? (root.histCpu[root.histCpu.length - 1 - (root.windowSize - 1 - index)] || 0) / 100 : 0))
+                                    )
+                                    color: modelData === 0 ? "#4d9fff"
+                                         : modelData === 1 ? "#e8c33a"
+                                         : modelData === 2 ? "#b07fe8"
+                                         : modelData === 3 ? "#3ddc84"
+                                         : "#ff8c42"
+                                }
                             }
-                            ctx.stroke();
                         }
-                        draw(hu, "#4d9fff", function(v) { return v; });
-                        draw(hm, "#e8c33a", function(v) { return v; });
-                        draw(ht, "#b07fe8", function(v) { return (v - tf) * 100 / (tm - tf); });
-                        draw(hp, "#3ddc84", function(v) { return v; });
-                        draw(hc, "#ff8c42", function(v) { return v; });
                     }
                 }
             }
@@ -348,7 +326,6 @@ PlasmoidItem {
         }
     }
 
-    // ---- hover / tooltip ---------------------------------------------
     toolTipMainText: "GPU " + fmt(gpu.util, "%") + "  "
         + fmt((gpu.mem_used !== null && gpu.mem_total) ? gpu.mem_used * 100 / gpu.mem_total : null, "%")
         + " mem  " + fmt(gpu.temp, "°C", 1) + "  " + fmt(gpu.power_w, "W", 1)
