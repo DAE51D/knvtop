@@ -188,17 +188,56 @@ PlasmoidItem {
                 ctx.reset();
                 ctx.fillStyle = "#101418";
                 ctx.fillRect(0, 0, width, height);
-                drawLines(ctx, width, height);
+                var ws = root.windowSize;
+                var hu = root.histUtil;
+                var hm = root.histMem;
+                var ht = root.histTemp;
+                var hp = root.histPower;
+                var hc = root.histCpu;
+                var tf = root.tempFloor;
+                var tm = root.tempMax;
+                function px(i) { return 2 + (width - 4) * i / (ws - 1); }
+                function py(v) { return height - 2 - (height - 4) * v / 100; }
+                // grid
+                ctx.strokeStyle = "#2a2f35";
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                for (var g = 0; g <= 4; g++) {
+                    var gy = py(g * 25);
+                    ctx.moveTo(2, gy); ctx.lineTo(width - 2, gy);
+                }
+                ctx.stroke();
+                function draw(data, color, yOf) {
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    var st = false;
+                    for (var i = 0; i < ws; i++) {
+                        var v = data[i];
+                        if (v === null || v === undefined) { st = false; continue; }
+                        var x = px(i);
+                        var y = py(yOf(v));
+                        if (!st) { ctx.moveTo(x, y); st = true; }
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.stroke();
+                }
+                draw(hu, "#4d9fff", function(v) { return v; });
+                draw(hm, "#e8c33a", function(v) { return v; });
+                draw(ht, "#b07fe8", function(v) { return (v - tf) * 100 / (tm - tf); });
+                draw(hp, "#3ddc84", function(v) { return v; });
+                draw(hc, "#ff8c42", function(v) { return v; });
                 // legend
                 ctx.font = "9px sans-serif";
                 ctx.textAlign = "left";
-                var lx = 14, ly = 10;
-                ctx.fillStyle = "#4d9fff"; ctx.fillText("GPU %", lx, ly);
-                ctx.fillStyle = "#e8c33a"; ctx.fillText("GPU mem%", lx, ly + 11);
-                ctx.fillStyle = "#b07fe8"; ctx.fillText("GPU temp(c)", lx, ly + 22);
-                ctx.fillStyle = "#3ddc84"; ctx.fillText("GPU power%", lx, ly + 33);
-                ctx.fillStyle = "#ff8c42"; ctx.fillText("CPU %", lx, ly + 44);
+                var lx = 14, ly = 0;
+                ctx.fillStyle = "#4d9fff"; ctx.fillText("GPU", lx, ly + 10);
+                ctx.fillStyle = "#e8c33a"; ctx.fillText("MEM", lx + 25, ly + 10);
+                ctx.fillStyle = "#b07fe8"; ctx.fillText("TMP", lx + 50, ly + 10);
+                ctx.fillStyle = "#3ddc84"; ctx.fillText("PWR", lx + 75, ly + 10);
+                ctx.fillStyle = "#ff8c42"; ctx.fillText("CPU", lx + 100, ly + 10);
             }
+        }
         }
     }
 
