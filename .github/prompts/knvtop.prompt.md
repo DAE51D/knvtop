@@ -19,6 +19,11 @@ sources directly, so nvtop itself is optional at runtime).
 | GPU mem %   | yellow | VRAM/GTT used %                  | `rocm-smi` / `amdgpu_top` (GTT on APU, ~80 GB)   |
 | GPU temp °C | purple | GPU temperature                  | `/sys/class/hwmon/hwmon*/temp1_input`            |
 | GPU power % | green  | Power draw % of TDP              | `rocm-smi` power / `amdgpu_top` power            |
+| CPU %       | orange | CPU utilization % (all cores)    | `/proc/stat` delta between samples               |
+
+The CPU % line is useful to see what part of the model workload is in RAM
+vs VRAM, i.e. CPU vs GPU — when the LLM is mostly offloaded to GPU the CPU
+line stays low; when layers spill to RAM the CPU line climbs.
 
 Target hardware: AMD Radeon 8060S iGPU (Strix Halo, gfx1151) — an APU with
 unified memory. `rocm-smi` only reports the 2 GB dedicated domain, so for
@@ -149,18 +154,21 @@ the nvtop source. Full detail: session memory `knvtop-research.md`.
    desktop.
 
 ### Phase 2 — Data bridge (milestone commit 2)
-4. `backend/knvtop_poll.py`: 1 Hz loop, one JSON line/line to stdout:
-   `{gpu:{util,mem_used,mem_total,temp,power_w,power_cap_w},
-     sys:{ram_used,ram_total,swap,loadavg},
-     llm:{llama:[...],ollama:[...],vllm:[...]}}`.
+4. `backend/knvtop_poll.py`: reusable sampling functions
+   (`gpu_sample()`, `sys_sample()`, `llm_sample()`, `ollama_ps()`).
    - GPU via `amd-smi metric --json` (subprocess, parse); on failure fall back
      to sysfs (resolve hwmon by `name == "amdgpu"`).
    - RAM/load from `/proc/meminfo`, `/proc/loadavg`.
    - LLM: scan `/proc/*/cmdline` for `llama-server|llama-cli|ollama|vllm`;
      `curl` ollama `/api/ps` (timeout 3 s).
-5. `main.qml`: `QProcess` spawns `knvtop_poll.py`,
-   `readyReadStandardOutput` → `readLine` → `JSON.parse` → latest sample;
-   21-pt ring buffer for the graph; bind detail-panel text.
+5. `service/knvtop_service.py`: D-Bus service on the session bus
+   (`com.daevid.knvtop` / `/com/daevid/knvtop`). Runs the poller in a
+   background thread at 1 Hz. Exposes:
+   - `com.daevid.knvtop.Sample.Get()` → `a{sv}` with keys `gpu`, `sys`, `llm`
+   - `com.daevid.knvtop.Status.IsAlive()` → `bool`
+   - `com.daevid.knvtop.Status.Restart()` → restarts the poller thread
+6. `main.qml`: `PlasmaDBus.SessionBus.asyncCall` polls `Sample.Get()` every
+   1 s; 21-pt ring buffer for the graph; bind detail-panel text.
 
 ### Phase 3 — Graph + popup (milestone commit 3)
 6. `Canvas`: on new sample push to ring buffer, `requestPaint`; draw 4
@@ -177,14 +185,68 @@ the nvtop source. Full detail: session memory `knvtop-research.md`.
    this prompt file in tandem.
 10. Optional: `config/main.xml` for sample interval + which lines to show.
 
+## Implementation learnings (2026-08-25)
+
+- **`QProcess` does NOT work in declarative QML plasmoids.** No plasmoid in
+  `/usr/share/plasma/plasmoids/` uses it. `QProcess` is a C++ class, not a
+  QML type. The proven pattern (see `org.kde.pmode`) is a **D-Bus service**
+  that the QML talks to via `PlasmaDBus.SessionBus.asyncCall`.
+- **`Plasmoid.background` is not a valid property.** Use
+  `Plasmoid.backgroundHints: PlasmaCore.Types.DefaultBackground` instead.
+  Assigning to `Plasmoid.background` causes a load error:
+  "Cannot assign to non-existent property 'background'".
+- **Do NOT add the plasmoid to the desktop/panel config via
+  `plasma-org.kde.plasma.desktop-appletsrc`** — plasmashell rewrites that
+  file and re-instantiates widgets, causing a flood of broken-widget popups.
+  Install the plasmoid, verify the QML loads (no error dialog), then let the
+  user add it via right-click → Add Widgets.
+- **`plasma-org.kde.plasma.desktop-appletsrc` is under etckeeper-style git
+  backup via `~`** — if you must edit it, commit the change deliberately.
+- **`widgetById` in `evaluateScript` returns `undefined`** for newly added
+  widgets. The `addWidget` return value is a `WorkspaceScripting::Widget`
+  object whose string form contains a hex address, but `widgetById` does not
+  accept that address. This makes programmatic verification of widget load
+  state unreliable via D-Bus scripting.
+- **`rtk` can mask real output.** When `rtk grep` returns empty, the actual
+  `grep` may also return empty (no matches) — but `rtk` can also swallow
+  output in ways that hide what is happening. If an `rtk`-wrapped command
+  is failing or returning useless output, retry the SAME command WITHOUT
+  `rtk` before trying anything else.
+- **Anti-loop rule.** If the same command (or a near-identical variant) has
+  been run 2-3 times without producing new information or changing state,
+  STOP. Question the premise, switch approach, or say so explicitly.
+
+## Implementation learnings (2026-08-26)
+
+- **D-Bus service: use `dbus-python` + `dbus.mainloop.glib`, NOT Gio.**
+  Mixing `Gio.DBusConnection.register_object` with `dbus.SessionBus().request_name`
+  fails silently — the name is claimed but method replies are never sent.
+  The working pattern: `dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)`
+  first, then `dbus.service.BusName(BUS_NAME, bus=dbus.SessionBus())`, then
+  `dbus.service.Object` subclass with `@dbus.service.method` decorators.
+  Use `dbus.Dictionary`/`dbus.Array`/`dbus.Int64`/`dbus.Double`/`dbus.String`
+  for return values (NOT `GLib.Variant` — incompatible with dbus-python's
+  type system).
+- **`dbus.NAME_FLAG_DO_NOT_QUEUE` does not exist** in the Python `dbus`
+  module. `request_name(name)` with no flags is the default (queue).
+- **CPU% via `/proc/stat` delta:** read the `cpu` line, compute
+  `(1 - d_idle/d_total) * 100` between consecutive samples. First sample
+  returns None (no baseline). Global `_prev_cpu` state in the poller module.
+- **systemd user unit for the D-Bus service:** `knvtop.service` in
+  `~/.config/systemd/user/`, `ExecStart=%h/Code/knvtop/service/knvtop_service.py`,
+  `WantedBy=default.target`. The script needs `chmod +x` or systemd
+  returns `203/EXEC`.
+
 ## TODO
 
-- [ ] Phase 1: plasmoid scaffold (`metadata.json` + `main.qml`), verify loads
-- [ ] Phase 2: `backend/knvtop_poll.py` + QML `QProcess` JSON-lines bridge
-- [ ] Phase 3: `Canvas` 4-line graph + `fullRepresentation` hover/click panel
-- [ ] Phase 3: graceful N/A handling (power cap / ollama / no LLM procs)
+- [x] Phase 1: plasmoid scaffold (`metadata.json` + `main.qml`), verify loads
+- [x] Phase 2: D-Bus service (`service/knvtop_service.py`) + QML `PlasmaDBus` bridge
+- [x] Phase 3: `Canvas` 5-line graph (GPU util/mem/temp/power + CPU) + `fullRepresentation` hover/click panel
+- [x] Phase 3: graceful N/A handling (power cap / ollama / no LLM procs)
+- [x] systemd user unit (`knvtop.service`) for the D-Bus service
 - [ ] Phase 4: README + prompt-file sync; optional `config/main.xml`
 - [ ] Milestone commits 1–4 pushed to `main` (Gitea `DAE51D/knvtop`)
+- [ ] User adds widget via right-click → Add Widgets, verify lines render
 
 ## Verification
 

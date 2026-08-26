@@ -1,0 +1,25 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Id": "com.daevid.knvtop",
+        "Name": "knvtop",
+        "Description": "GPU + LLM inference monitor (nvtop-style 4-line graph with hover detail panel)",
+        "Icon": "video-display",
+        "Version": "0.1.0",
+        "Authors": [
+            {
+                "Name": "Daevid Vincent",
+                "Email": "daevid@daevid.com"
+            }
+        ],
+        "Category": "System Information",
+        "License": "LGPL-2.1-or-later",
+        "FormFactors": [
+            "desktop",
+            "panel"
+        ]
+    },
+    "X-Plasma-API": "declarativeappletscript",
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-MainScript": "ui/main.qml"
+}
