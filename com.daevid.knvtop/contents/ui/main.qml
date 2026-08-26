@@ -78,10 +78,11 @@ PlasmoidItem {
     function restartPoller() {
         pollerAlive = false;
         var msg = new PlasmaDBus.dbusMessage({
-            destination: "com.daevid.knvtop",
+            service: "com.daevid.knvtop",
             path: "/com/daevid/knvtop",
-            interface: "com.daevid.knvtop.Status",
-            member: "Restart"
+            iface: "com.daevid.knvtop.Status",
+            member: "Restart",
+            arguments: []
         });
         PlasmaDBus.SessionBus.asyncCall(msg, () => {}, () => {});
     }
@@ -89,32 +90,35 @@ PlasmoidItem {
     // ---- data bridge: D-Bus polling ---------------------------------
     function poll() {
         var msg = new PlasmaDBus.dbusMessage({
-            destination: "com.daevid.knvtop",
+            service: "com.daevid.knvtop",
             path: "/com/daevid/knvtop",
-            interface: "com.daevid.knvtop.Sample",
-            member: "Get"
+            iface: "com.daevid.knvtop.Sample",
+            member: "Get",
+            arguments: []
         });
         PlasmaDBus.SessionBus.asyncCall(msg, (reply) => {
             try {
-                var data = reply.body[0];
-                var s = {
-                    gpu: data.gpu || {},
-                    sys: data.sys || {},
-                    llm: data.llm || {}
-                };
-                function fixNulls(obj) {
-                    if (obj === null || obj === undefined) return null;
-                    if (typeof obj === "string" && obj === "null") return null;
-                    if (Array.isArray(obj)) return obj.map(fixNulls);
-                    if (typeof obj === "object") {
-                        var out = {};
-                        for (var k in obj) out[k] = fixNulls(obj[k]);
-                        return out;
+                if (!reply.isError && reply.values && reply.values.length > 0) {
+                    var data = reply.values[0];
+                    var s = {
+                        gpu: data.gpu || {},
+                        sys: data.sys || {},
+                        llm: data.llm || {}
+                    };
+                    function fixNulls(obj) {
+                        if (obj === null || obj === undefined) return null;
+                        if (typeof obj === "string" && obj === "null") return null;
+                        if (Array.isArray(obj)) return obj.map(fixNulls);
+                        if (typeof obj === "object") {
+                            var out = {};
+                            for (var k in obj) out[k] = fixNulls(obj[k]);
+                            return out;
+                        }
+                        return obj;
                     }
-                    return obj;
+                    pushSample(fixNulls(s));
+                    pollerAlive = true;
                 }
-                pushSample(fixNulls(s));
-                pollerAlive = true;
             } catch (e) {
                 pollerAlive = false;
             }
@@ -176,8 +180,8 @@ PlasmoidItem {
 
     // ---- compact representation: the graph ---------------------------
     compactRepresentation: Item {
-        width: inPanel ? 160 : 320
-        height: inPanel ? 64 : 180
+        width: inPanel ? 200 : 320
+        height: inPanel ? 80 : 180
 
         Canvas {
             id: compactGraph
