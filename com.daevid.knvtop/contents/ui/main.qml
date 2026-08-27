@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Shapes
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.plasmoid
 import org.kde.plasma.workspace.dbus as PlasmaDBus
@@ -125,7 +124,7 @@ PlasmoidItem {
         onTriggered: root.poll()
     }
 
-    // ---- compact: line graph (Shape/Path, no Canvas) ------------------
+    // ---- compact: sparkline graph (thin bars, no Canvas/Shape) --------
     compactRepresentation: Item {
         id: compact
         Layout.fillWidth: inPanel
@@ -143,24 +142,18 @@ PlasmoidItem {
             color: "#101418"
             radius: 3
 
-            function xPos(i) { return 2 + (compact.width - 4) * i / (root.windowSize - 1); }
-            function yPos(v) { return compact.height - 2 - (compact.height - 4) * v / 100; }
+            // 5 horizontal strips, each a 21-bar sparkline
+            Column {
+                anchors.fill: parent
+                anchors.margins: 2
+                spacing: 1
 
-            // 5 line paths, one per metric
-            Repeater {
-                model: 5
-                delegate: Shape {
-                    id: lineShape
-                    anchors.fill: parent
-                    ShapePath {
-                        id: sp
-                        strokeColor: modelData === 0 ? "#4d9fff"
-                             : modelData === 1 ? "#e8c33a"
-                             : modelData === 2 ? "#b07fe8"
-                             : modelData === 3 ? "#3ddc84"
-                             : "#ff8c42"
-                        strokeWidth: 1.5
-                        fillRule: ShapePath.NoFill
+                Repeater {
+                    model: 5
+                    delegate: Item {
+                        id: spark
+                        width: parent.width
+                        height: parent.height / 5
 
                         function val(i) {
                             var arr = modelData === 0 ? root.histUtil
@@ -177,43 +170,41 @@ PlasmoidItem {
                             return v;
                         }
 
-                        Repeater {
-                            model: root.windowSize
-                            delegate: PathLine {
-                                x: compact.xPos(index)
-                                y: compact.yPos(sp.val(index) !== null ? sp.val(index) : 0)
-                            }
-                        }
-                    }
-                }
-            }
-
-            // legend
-            Row {
-                anchors.bottom: parent.bottom
-                anchors.left: parent.left
-                anchors.leftMargin: 4
-                spacing: 6
-                Repeater {
-                    model: 5
-                    delegate: Row {
-                        spacing: 1
-                        Rectangle {
-                            width: 6; height: 6
-                            color: modelData === 0 ? "#4d9fff"
-                                 : modelData === 1 ? "#e8c33a"
-                                 : modelData === 2 ? "#b07fe8"
-                                 : modelData === 3 ? "#3ddc84"
-                                 : "#ff8c42"
-                        }
+                        // label on the left
                         Label {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 1
+                            anchors.verticalCenter: parent.verticalCenter
                             text: modelData === 0 ? "GPU"
                                  : modelData === 1 ? "MEM"
                                  : modelData === 2 ? "TMP"
                                  : modelData === 3 ? "PWR"
                                  : "CPU"
-                            font.pointSize: 7
+                            font.pointSize: 6
                             color: "#8a9199"
+                            width: 22
+                        }
+
+                        // sparkline bars
+                        Item {
+                            id: barArea
+                            anchors.fill: parent
+                            anchors.leftMargin: 24
+
+                            Repeater {
+                                model: root.windowSize
+                                delegate: Rectangle {
+                                    width: Math.max(1, barArea.width / root.windowSize - 1)
+                                    height: barArea.height * (barArea.spark.val(index) !== null ? barArea.spark.val(index) / 100 : 0)
+                                    x: index * (barArea.width / root.windowSize)
+                                    anchors.bottom: parent.bottom
+                                    color: modelData === 0 ? "#4d9fff"
+                                         : modelData === 1 ? "#e8c33a"
+                                         : modelData === 2 ? "#b07fe8"
+                                         : modelData === 3 ? "#3ddc84"
+                                         : "#ff8c42"
+                                }
+                            }
                         }
                     }
                 }
