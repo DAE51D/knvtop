@@ -32,6 +32,7 @@ PlasmoidItem {
     property var histTemp: []
     property var histPower: []
     property var histCpu: []
+    property int revision: 0
 
     property bool pollerAlive: false
 
@@ -60,18 +61,6 @@ PlasmoidItem {
         return v === null || v === undefined ? 0 : Number(v);
     }
 
-    function histVal(metric, i) {
-        var arr = metric === 0 ? histUtil : metric === 1 ? histMem
-                : metric === 2 ? histTemp : metric === 3 ? histPower : histCpu;
-        if (!arr || arr.length === 0) return null;
-        var idx = arr.length - windowSize + i;
-        if (idx < 0) return null;
-        var v = arr[idx];
-        if (v === null || v === undefined) return null;
-        if (metric === 2) return pctNorm(v, tempFloor, tempMax);
-        return v;
-    }
-
     function pushSample(s) {
         if (s.gpu) gpu = s.gpu;
         if (s.sys) sys = s.sys;
@@ -92,6 +81,7 @@ PlasmoidItem {
         push(histPower, (gpu.power_w !== null && gpu.power_cap_w)
                          ? Math.min(100, gpu.power_w * 100 / gpu.power_cap_w) : null);
         push(histCpu, sys.cpu);
+        revision++;
     }
 
     function restartPoller() {
@@ -136,9 +126,8 @@ PlasmoidItem {
         onTriggered: root.poll()
     }
 
-    // ---- compact: sparkline graph (thin bars, no Canvas/Shape) --------
+    // ---- compact: 5 sparkline strips ----------------------------------
     compactRepresentation: Item {
-        id: compact
         Layout.fillWidth: inPanel
         Layout.fillHeight: inPanel
         Layout.minimumWidth: inPanel ? 160 : 280
@@ -154,7 +143,6 @@ PlasmoidItem {
             color: "#101418"
             radius: 3
 
-            // 5 horizontal strips, each a 21-bar sparkline
             Column {
                 anchors.fill: parent
                 anchors.margins: 2
@@ -166,7 +154,6 @@ PlasmoidItem {
                         width: parent.width
                         height: parent.height / 5
 
-                        // label on the left
                         Label {
                             anchors.left: parent.left
                             anchors.leftMargin: 1
@@ -186,7 +173,6 @@ PlasmoidItem {
                             width: 22
                         }
 
-                        // current value on the right
                         Label {
                             anchors.right: parent.right
                             anchors.rightMargin: 1
@@ -202,27 +188,23 @@ PlasmoidItem {
                             horizontalAlignment: Text.AlignRight
                         }
 
-                        // sparkline bars
-                        Item {
-                            id: barArea
+                        Sparkline {
                             anchors.fill: parent
                             anchors.leftMargin: 24
                             anchors.rightMargin: 32
-
-                            Repeater {
-                                model: root.windowSize
-                                delegate: Rectangle {
-                                    width: Math.max(1, barArea.width / root.windowSize - 1)
-                                    height: barArea.height * (root.histVal(modelData, index) !== null ? root.histVal(modelData, index) / 100 : 0)
-                                    x: index * (barArea.width / root.windowSize)
-                                    anchors.bottom: parent.bottom
-                                    color: modelData === 0 ? "#4d9fff"
-                                         : modelData === 1 ? "#e8c33a"
-                                         : modelData === 2 ? "#b07fe8"
-                                         : modelData === 3 ? "#3ddc84"
-                                         : "#ff8c42"
-                                }
-                            }
+                            values: modelData === 0 ? root.histUtil
+                                    : modelData === 1 ? root.histMem
+                                    : modelData === 2 ? root.histTemp
+                                    : modelData === 3 ? root.histPower
+                                    : root.histCpu
+                            revision: root.revision
+                            maximum: modelData === 2 ? root.tempMax : 100
+                            lineColor: modelData === 0 ? "#4d9fff"
+                                     : modelData === 1 ? "#e8c33a"
+                                     : modelData === 2 ? "#b07fe8"
+                                     : modelData === 3 ? "#3ddc84"
+                                     : "#ff8c42"
+                            capacity: root.windowSize
                         }
                     }
                 }
@@ -257,10 +239,10 @@ PlasmoidItem {
                 }
             }
 
-            // history graph: 5 rows of horizontal bars
+            // 5 sparkline rows
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 2
+                spacing: 4
                 Repeater {
                     model: 5
                     delegate: RowLayout {
@@ -273,29 +255,32 @@ PlasmoidItem {
                                  : modelData === 3 ? "PWR"
                                  : "CPU"
                             font.pointSize: 8
-                            color: "#8a9199"
+                            font.bold: true
+                            color: modelData === 0 ? "#4d9fff"
+                                 : modelData === 1 ? "#e8c33a"
+                                 : modelData === 2 ? "#b07fe8"
+                                 : modelData === 3 ? "#3ddc84"
+                                 : "#ff8c42"
                             Layout.preferredWidth: 30
                         }
                         Item {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 14
-                            Repeater {
-                                model: root.windowSize
-                                delegate: Rectangle {
-                                    width: Math.max(1, parent.width / root.windowSize - 1)
-                                    height: parent.height * (
-                                        (modelData === 0 ? (root.histUtil.length > root.windowSize - 1 - index ? (root.histUtil[root.histUtil.length - 1 - (root.windowSize - 1 - index)] || 0) / 100 : 0)
-                                         : modelData === 1 ? (root.histMem.length > root.windowSize - 1 - index ? (root.histMem[root.histMem.length - 1 - (root.windowSize - 1 - index)] || 0) / 100 : 0)
-                                         : modelData === 2 ? (root.histTemp.length > root.windowSize - 1 - index ? root.pctNorm(root.histTemp[root.histTemp.length - 1 - (root.windowSize - 1 - index)], root.tempFloor, root.tempMax) / 100 : 0)
-                                         : modelData === 3 ? (root.histPower.length > root.windowSize - 1 - index ? (root.histPower[root.histPower.length - 1 - (root.windowSize - 1 - index)] || 0) / 100 : 0)
-                                         : (root.histCpu.length > root.windowSize - 1 - index ? (root.histCpu[root.histCpu.length - 1 - (root.windowSize - 1 - index)] || 0) / 100 : 0))
-                                    )
-                                    color: modelData === 0 ? "#4d9fff"
+                            Layout.preferredHeight: 20
+                            Sparkline {
+                                anchors.fill: parent
+                                values: modelData === 0 ? root.histUtil
+                                        : modelData === 1 ? root.histMem
+                                        : modelData === 2 ? root.histTemp
+                                        : modelData === 3 ? root.histPower
+                                        : root.histCpu
+                                revision: root.revision
+                                maximum: modelData === 2 ? root.tempMax : 100
+                                lineColor: modelData === 0 ? "#4d9fff"
                                          : modelData === 1 ? "#e8c33a"
                                          : modelData === 2 ? "#b07fe8"
                                          : modelData === 3 ? "#3ddc84"
                                          : "#ff8c42"
-                                }
+                                capacity: root.windowSize
                             }
                         }
                     }
