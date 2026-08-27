@@ -126,7 +126,7 @@ PlasmoidItem {
         onTriggered: root.poll()
     }
 
-    // ---- compact: 5 sparkline strips ----------------------------------
+    // ---- compact: overlaid multi-line graph + legend ------------------
     compactRepresentation: Item {
         Layout.fillWidth: inPanel
         Layout.fillHeight: inPanel
@@ -143,68 +143,61 @@ PlasmoidItem {
             color: "#101418"
             radius: 3
 
-            Column {
+            // graph area (full height minus legend)
+            Item {
+                id: graphArea
                 anchors.fill: parent
-                anchors.margins: 2
-                spacing: 1
+                anchors.bottomMargin: 12
 
+                // 5 overlaid sparklines
                 Repeater {
                     model: 5
-                    delegate: Item {
-                        width: parent.width
-                        height: parent.height / 5
+                    delegate: Sparkline {
+                        anchors.fill: parent
+                        values: modelData === 0 ? root.histUtil
+                                : modelData === 1 ? root.histMem
+                                : modelData === 2 ? root.histTemp
+                                : modelData === 3 ? root.histPower
+                                : root.histCpu
+                        revision: root.revision
+                        maximum: modelData === 2 ? root.tempMax : 100
+                        lineColor: modelData === 0 ? "#4d9fff"
+                                 : modelData === 1 ? "#e8c33a"
+                                 : modelData === 2 ? "#b07fe8"
+                                 : modelData === 3 ? "#3ddc84"
+                                 : "#ff8c42"
+                        capacity: root.windowSize
+                        lineWidth: 1.5
+                    }
+                }
+            }
 
+            // legend
+            Row {
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.leftMargin: 4
+                spacing: 6
+                Repeater {
+                    model: 5
+                    delegate: Row {
+                        spacing: 1
+                        Rectangle {
+                            width: 6; height: 2
+                            color: modelData === 0 ? "#4d9fff"
+                                 : modelData === 1 ? "#e8c33a"
+                                 : modelData === 2 ? "#b07fe8"
+                                 : modelData === 3 ? "#3ddc84"
+                                 : "#ff8c42"
+                        }
                         Label {
-                            anchors.left: parent.left
-                            anchors.leftMargin: 1
-                            anchors.verticalCenter: parent.verticalCenter
                             text: modelData === 0 ? "GPU"
                                  : modelData === 1 ? "MEM"
                                  : modelData === 2 ? "TMP"
                                  : modelData === 3 ? "PWR"
                                  : "CPU"
                             font.pointSize: 6
-                            font.bold: true
-                            color: modelData === 0 ? "#4d9fff"
-                                 : modelData === 1 ? "#e8c33a"
-                                 : modelData === 2 ? "#b07fe8"
-                                 : modelData === 3 ? "#3ddc84"
-                                 : "#ff8c42"
-                            width: 22
-                        }
-
-                        Label {
-                            anchors.right: parent.right
-                            anchors.rightMargin: 1
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: modelData === 0 ? root.fmt(root.latest(root.histUtil), "%")
-                                 : modelData === 1 ? root.fmt(root.latest(root.histMem), "%")
-                                 : modelData === 2 ? root.fmt(root.latest(root.histTemp), "°C", 1)
-                                 : modelData === 3 ? root.fmt(root.latest(root.histPower), "%")
-                                 : root.fmt(root.latest(root.histCpu), "%", 1)
-                            font.pointSize: 6
-                            color: "#c8ccd2"
-                            width: 30
-                            horizontalAlignment: Text.AlignRight
-                        }
-
-                        Sparkline {
-                            anchors.fill: parent
-                            anchors.leftMargin: 24
-                            anchors.rightMargin: 32
-                            values: modelData === 0 ? root.histUtil
-                                    : modelData === 1 ? root.histMem
-                                    : modelData === 2 ? root.histTemp
-                                    : modelData === 3 ? root.histPower
-                                    : root.histCpu
-                            revision: root.revision
-                            maximum: modelData === 2 ? root.tempMax : 100
-                            lineColor: modelData === 0 ? "#4d9fff"
-                                     : modelData === 1 ? "#e8c33a"
-                                     : modelData === 2 ? "#b07fe8"
-                                     : modelData === 3 ? "#3ddc84"
-                                     : "#ff8c42"
-                            capacity: root.windowSize
+                            color: "#8a9199"
                         }
                     }
                 }
