@@ -11,6 +11,10 @@ Canvas {
     property int capacity: 21
     property bool mirrored: false
     property real cornerRadius: 0
+    property real padTop: 4
+    property real padBottom: 2
+    property real padLeft: 2
+    property real padRight: 2
 
     onRevisionChanged: requestPaint()
     onMaximumChanged: requestPaint()
@@ -38,7 +42,9 @@ Canvas {
 
         var span = Math.max(2, capacity)
         var max = Math.max(maximum, 0.0001)
-        var stepX = width / (span - 1)
+        var plotW = width - padLeft - padRight
+        var plotH = height - padTop - padBottom
+        var stepX = plotW / (span - 1)
         var firstIndex = Math.max(0, values.length - span)
         var points = []
 
@@ -47,23 +53,23 @@ Canvas {
             if (v === null || v === undefined)
                 continue
             var ratio = Math.max(0, Math.min(1, v / max))
-            var x = width - (values.length - 1 - i) * stepX
-            var y = mirrored ? ratio * height : height - ratio * height
+            var x = padLeft + plotW - (values.length - 1 - i) * stepX
+            var y = padTop + plotH - ratio * plotH
             points.push({ x: x, y: y })
         }
 
         if (points.length < 2)
             return
 
-        var gradient = ctx.createLinearGradient(0, mirrored ? height : 0, 0, mirrored ? 0 : height)
+        var gradient = ctx.createLinearGradient(0, padTop, 0, padTop + plotH)
         gradient.addColorStop(0, Qt.rgba(lineColor.r, lineColor.g, lineColor.b, 0.34))
         gradient.addColorStop(1, Qt.rgba(lineColor.r, lineColor.g, lineColor.b, 0.02))
 
         ctx.beginPath()
-        ctx.moveTo(points[0].x, mirrored ? 0 : height)
+        ctx.moveTo(points[0].x, padTop + plotH)
         for (var p = 0; p < points.length; p++)
             ctx.lineTo(points[p].x, points[p].y)
-        ctx.lineTo(points[points.length - 1].x, mirrored ? 0 : height)
+        ctx.lineTo(points[points.length - 1].x, padTop + plotH)
         ctx.closePath()
         ctx.fillStyle = gradient
         ctx.fill()
