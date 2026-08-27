@@ -60,6 +60,18 @@ PlasmoidItem {
         return v === null || v === undefined ? 0 : Number(v);
     }
 
+    function histVal(metric, i) {
+        var arr = metric === 0 ? histUtil : metric === 1 ? histMem
+                : metric === 2 ? histTemp : metric === 3 ? histPower : histCpu;
+        if (!arr || arr.length === 0) return null;
+        var idx = arr.length - windowSize + i;
+        if (idx < 0) return null;
+        var v = arr[idx];
+        if (v === null || v === undefined) return null;
+        if (metric === 2) return pctNorm(v, tempFloor, tempMax);
+        return v;
+    }
+
     function pushSample(s) {
         if (s.gpu) gpu = s.gpu;
         if (s.sys) sys = s.sys;
@@ -151,24 +163,8 @@ PlasmoidItem {
                 Repeater {
                     model: 5
                     delegate: Item {
-                        id: spark
                         width: parent.width
                         height: parent.height / 5
-
-                        function val(i) {
-                            var arr = modelData === 0 ? root.histUtil
-                                    : modelData === 1 ? root.histMem
-                                    : modelData === 2 ? root.histTemp
-                                    : modelData === 3 ? root.histPower
-                                    : root.histCpu;
-                            if (!arr || arr.length === 0) return null;
-                            var idx = arr.length - root.windowSize + i;
-                            if (idx < 0) return null;
-                            var v = arr[idx];
-                            if (v === null || v === undefined) return null;
-                            if (modelData === 2) return root.pctNorm(v, root.tempFloor, root.tempMax);
-                            return v;
-                        }
 
                         // label on the left
                         Label {
@@ -217,7 +213,7 @@ PlasmoidItem {
                                 model: root.windowSize
                                 delegate: Rectangle {
                                     width: Math.max(1, barArea.width / root.windowSize - 1)
-                                    height: barArea.height * (barArea.spark.val(index) !== null ? barArea.spark.val(index) / 100 : 0)
+                                    height: barArea.height * (root.histVal(modelData, index) !== null ? root.histVal(modelData, index) / 100 : 0)
                                     x: index * (barArea.width / root.windowSize)
                                     anchors.bottom: parent.bottom
                                     color: modelData === 0 ? "#4d9fff"
