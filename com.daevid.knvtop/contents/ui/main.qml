@@ -78,8 +78,9 @@ PlasmoidItem {
         push(histMem, (gpu.mem_used !== null && gpu.mem_total)
                       ? gpu.mem_used * 100 / gpu.mem_total : null);
         push(histTemp, gpu.temp);
-        push(histPower, (gpu.power_w !== null && gpu.power_cap_w)
-                         ? Math.min(100, gpu.power_w * 100 / gpu.power_cap_w) : null);
+        var pwrMax = gpu.power_cap_w || 100;
+        push(histPower, (gpu.power_w !== null)
+                         ? Math.min(100, gpu.power_w * 100 / pwrMax) : null);
         push(histCpu, sys.cpu);
         revision++;
     }
@@ -218,10 +219,9 @@ PlasmoidItem {
                 Label { text: "knvtop"; font.bold: true; Layout.preferredWidth: 80 }
                 Label {
                     text: "GPU " + fmt(gpu.util, "%") + "  "
-                         + mb(gpu.mem_used) + "/" + mb(gpu.mem_total)
+                         + (gpu.mem_used !== null && gpu.mem_total ? mb(gpu.mem_used) + "/" + mb(gpu.mem_total) : "N/A")
                          + "  " + fmt(gpu.temp, "°C", 1)
                          + "  " + fmt(gpu.power_w, " W", 1)
-                         + (gpu.power_cap_w ? " / " + fmt(gpu.power_cap_w, " W") : "")
                          + "  CPU " + fmt(sys.cpu, "%", 1)
                     color: "#c8ccd2"
                 }
@@ -345,10 +345,10 @@ PlasmoidItem {
     }
 
     toolTipMainText: "GPU " + fmt(gpu.util, "%") + "  "
-        + fmt((gpu.mem_used !== null && gpu.mem_total) ? gpu.mem_used * 100 / gpu.mem_total : null, "%")
-        + " mem  " + fmt(gpu.temp, "°C", 1) + "  " + fmt(gpu.power_w, "W", 1)
+        + (gpu.mem_used !== null && gpu.mem_total ? mb(gpu.mem_used) + "/" + mb(gpu.mem_total) : "N/A")
+        + "  " + fmt(gpu.temp, "°C", 1) + "  " + fmt(gpu.power_w, "W", 1)
         + "  CPU " + fmt(sys.cpu, "%", 1)
-    toolTipSubText: "RAM " + mb(sys.ram_used) + "/" + mb(sys.ram_total)
+    toolTipSubText: "sys RAM " + mb(sys.ram_used) + "/" + mb(sys.ram_total)
         + "  load " + sys.load1.toFixed(2)
         + (llama.length ? "  " + llama.length + " llama.cpp" : "")
         + (ollamaModels.length ? "  " + ollamaModels.length + " ollama model(s)" : "")
