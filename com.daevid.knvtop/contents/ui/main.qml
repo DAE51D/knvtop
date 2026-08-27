@@ -181,8 +181,29 @@ PlasmoidItem {
                                  : modelData === 3 ? "PWR"
                                  : "CPU"
                             font.pointSize: 6
-                            color: "#8a9199"
+                            font.bold: true
+                            color: modelData === 0 ? "#4d9fff"
+                                 : modelData === 1 ? "#e8c33a"
+                                 : modelData === 2 ? "#b07fe8"
+                                 : modelData === 3 ? "#3ddc84"
+                                 : "#ff8c42"
                             width: 22
+                        }
+
+                        // current value on the right
+                        Label {
+                            anchors.right: parent.right
+                            anchors.rightMargin: 1
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: modelData === 0 ? root.fmt(root.latest(root.histUtil), "%")
+                                 : modelData === 1 ? root.fmt(root.latest(root.histMem), "%")
+                                 : modelData === 2 ? root.fmt(root.latest(root.histTemp), "°C", 1)
+                                 : modelData === 3 ? root.fmt(root.latest(root.histPower), "%")
+                                 : root.fmt(root.latest(root.histCpu), "%", 1)
+                            font.pointSize: 6
+                            color: "#c8ccd2"
+                            width: 30
+                            horizontalAlignment: Text.AlignRight
                         }
 
                         // sparkline bars
@@ -190,6 +211,7 @@ PlasmoidItem {
                             id: barArea
                             anchors.fill: parent
                             anchors.leftMargin: 24
+                            anchors.rightMargin: 32
 
                             Repeater {
                                 model: root.windowSize
