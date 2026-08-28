@@ -156,6 +156,11 @@ PlasmoidItem {
                 anchors.fill: parent
                 anchors.bottomMargin: 12
 
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: Plasmoid.expanded = !Plasmoid.expanded
+                }
+
                 Sparkline {
                     anchors.fill: parent
                     visible: root.showGpu
