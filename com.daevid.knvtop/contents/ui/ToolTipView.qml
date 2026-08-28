@@ -35,13 +35,13 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            Label {
+            Text {
                 text: "knvtop"
                 font.bold: true
                 font.pointSize: 11
                 Layout.fillWidth: true
             }
-            Label {
+            Text {
                 text: tip.llama.length ? tip.llama.length + " llama.cpp" : ""
                 color: "#4d9fff"
                 font.pointSize: 9
@@ -52,26 +52,26 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             spacing: 4
-            Label {
+            Text {
                 text: "GPU"
                 color: "#8a9199"
                 font.pointSize: 9
                 Layout.preferredWidth: 40
             }
-            Label {
+            Text {
                 text: tip.fmt(tip.gpu.util, "%")
                 color: "#4d9fff"
                 font.bold: true
                 font.pointSize: 10
                 Layout.preferredWidth: 36
             }
-            Label {
+            Text {
                 text: tip.gpu.temp !== null ? tip.fmt(tip.gpu.temp, "°C", 0) : ""
                 color: "#6a7078"
                 font.pointSize: 9
             }
             Item { Layout.fillWidth: true }
-            Label {
+            Text {
                 text: tip.gpu.mem_used !== null && tip.gpu.mem_total
                       ? tip.mb(tip.gpu.mem_used) + "/" + tip.mb(tip.gpu.mem_total)
                       : ""
@@ -113,20 +113,20 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             spacing: 4
-            Label {
+            Text {
                 text: "PWR"
                 color: "#8a9199"
                 font.pointSize: 9
                 Layout.preferredWidth: 40
             }
-            Label {
+            Text {
                 text: tip.fmt(tip.gpu.power_w, "W", 1)
                 color: "#3ddc84"
                 font.bold: true
                 font.pointSize: 10
             }
             Item { Layout.fillWidth: true }
-            Label {
+            Text {
                 text: tip.gpu.power_cap_w ? "/" + tip.fmt(tip.gpu.power_cap_w, "W") : ""
                 color: "#6a7078"
                 font.pointSize: 9
@@ -137,20 +137,20 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             spacing: 4
-            Label {
+            Text {
                 text: "CPU"
                 color: "#8a9199"
                 font.pointSize: 9
                 Layout.preferredWidth: 40
             }
-            Label {
+            Text {
                 text: tip.fmt(tip.sys.cpu, "%", 1)
                 color: "#ff8c42"
                 font.bold: true
                 font.pointSize: 10
             }
             Item { Layout.fillWidth: true }
-            Label {
+            Text {
                 text: "load " + tip.sys.load1.toFixed(2)
                 color: "#6a7078"
                 font.pointSize: 9
@@ -175,13 +175,13 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             spacing: 4
-            Label {
+            Text {
                 text: "RAM"
                 color: "#8a9199"
                 font.pointSize: 9
                 Layout.preferredWidth: 40
             }
-            Label {
+            Text {
                 text: tip.mb(tip.sys.ram_used) + "/" + tip.mb(tip.sys.ram_total)
                 color: "#c8ccd2"
                 font.pointSize: 9
@@ -203,7 +203,7 @@ Item {
         }
 
         // LLM summary
-        Label {
+        Text {
             Layout.fillWidth: true
             visible: tip.llama.length > 0 || tip.ollamaModels.length > 0
             text: {
@@ -219,7 +219,7 @@ Item {
             font.pointSize: 8
         }
 
-        Label {
+        Text {
             text: "Click for details"
             color: "#4a4f55"
             font.pointSize: 8
