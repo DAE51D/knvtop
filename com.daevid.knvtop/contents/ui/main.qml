@@ -235,7 +235,7 @@ PlasmoidItem {
                                 text: modelData.label
                                 font.pointSize: 6
                                 color: root[modelData.prop] ? "#8a9199" : "#4a4f55"
-                                font.strikeOut: !root[modelData.prop]
+                                opacity: root[modelData.prop] ? 1 : 0.4
                             }
                         }
                         MouseArea {
