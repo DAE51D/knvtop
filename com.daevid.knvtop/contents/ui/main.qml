@@ -512,15 +512,13 @@ PlasmoidItem {
         }
     }
 
-    // ---- hover tooltip: bar-style values ------------------------------
-    toolTipMainText: "GPU " + fmt(gpu.util, "%") + "  "
-        + (gpu.mem_used !== null && gpu.mem_total ? mb(gpu.mem_used) + "/" + mb(gpu.mem_total) : "N/A")
-        + "  " + fmt(gpu.temp, "°C", 1) + "  " + fmt(gpu.power_w, "W", 1)
-        + "  CPU " + fmt(sys.cpu, "%", 1)
-    toolTipSubText: "sys RAM " + mb(sys.ram_used) + "/" + mb(sys.ram_total)
-        + "  load " + sys.load1.toFixed(2)
-        + (llama.length ? "  " + llama.length + " llama.cpp" : "")
-        + (ollamaModels.length ? "  " + ollamaModels.length + " ollama model(s)" : "")
+    // ---- hover tooltip: custom QML view --------------------------------
+    toolTipItem: ToolTipView {
+        gpu: root.gpu
+        sys: root.sys
+        llama: root.llama
+        ollamaModels: root.ollamaModels
+    }
 
     Plasmoid.contextualActions: [
         PlasmaCore.Action {
