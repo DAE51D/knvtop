@@ -263,7 +263,7 @@ PlasmoidItem {
             width: parent.width
             spacing: 8
 
-            // 5 ring gauges in widget order: GPU MEM TMP PWR CPU
+            // 5 ring gauges in widget order: GPU MEM TMP PWR CPU (click to toggle line)
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
@@ -271,6 +271,7 @@ PlasmoidItem {
                 // GPU (blue)
                 Item {
                     Layout.preferredWidth: 64; Layout.preferredHeight: 64
+                    opacity: root.showGpu ? 1 : 0.3
                     Canvas {
                         anchors.fill: parent
                         onPaint: {
@@ -288,10 +289,12 @@ PlasmoidItem {
                             ctx.fillText("GPU", cx, cy+10)
                         }
                     }
+                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.showGpu = !root.showGpu }
                 }
                 // MEM (yellow)
                 Item {
                     Layout.preferredWidth: 64; Layout.preferredHeight: 64
+                    opacity: root.showMem ? 1 : 0.3
                     Canvas {
                         anchors.fill: parent
                         onPaint: {
@@ -309,10 +312,12 @@ PlasmoidItem {
                             ctx.fillText("MEM", cx, cy+10)
                         }
                     }
+                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.showMem = !root.showMem }
                 }
                 // TMP (purple)
                 Item {
                     Layout.preferredWidth: 64; Layout.preferredHeight: 64
+                    opacity: root.showTemp ? 1 : 0.3
                     Canvas {
                         anchors.fill: parent
                         onPaint: {
@@ -331,10 +336,12 @@ PlasmoidItem {
                             ctx.fillText("TMP", cx, cy+10)
                         }
                     }
+                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.showTemp = !root.showTemp }
                 }
                 // PWR (green)
                 Item {
                     Layout.preferredWidth: 64; Layout.preferredHeight: 64
+                    opacity: root.showPower ? 1 : 0.3
                     Canvas {
                         anchors.fill: parent
                         onPaint: {
@@ -354,10 +361,12 @@ PlasmoidItem {
                             ctx.fillText("PWR", cx, cy+10)
                         }
                     }
+                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.showPower = !root.showPower }
                 }
                 // CPU (orange)
                 Item {
                     Layout.preferredWidth: 64; Layout.preferredHeight: 64
+                    opacity: root.showCpu ? 1 : 0.3
                     Canvas {
                         anchors.fill: parent
                         onPaint: {
@@ -375,6 +384,7 @@ PlasmoidItem {
                             ctx.fillText("CPU", cx, cy+10)
                         }
                     }
+                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.showCpu = !root.showCpu }
                 }
             }
 
@@ -392,7 +402,7 @@ PlasmoidItem {
             // graph section
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 80
+                Layout.preferredHeight: 120
                 color: "#101418"
                 radius: 3
                 Item {
@@ -415,9 +425,10 @@ PlasmoidItem {
                     radius: 3
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 6
-                        spacing: 2
+                        anchors.margins: 8
+                        spacing: 3
                         Label {
+                            Layout.fillWidth: true
                             text: "llama.cpp  pid " + modelData.pid
                                  + (modelData.alias ? "  [" + modelData.alias + "]" : "")
                                  + (modelData.port ? "  :port " + modelData.port : "")
@@ -425,6 +436,7 @@ PlasmoidItem {
                             color: "#4d9fff"; font.bold: true; font.pointSize: 9
                         }
                         Label {
+                            Layout.fillWidth: true
                             text: "ngl: " + (modelData.ngl || "N/A")
                                  + "   ctx: " + (modelData.ctx || "N/A")
                                  + "   parallel: " + (modelData.parallel || "N/A")
@@ -433,10 +445,12 @@ PlasmoidItem {
                             color: "#aeb4bb"; font.pointSize: 8
                         }
                         Label {
+                            Layout.fillWidth: true
                             text: modelData.cmdline
                             color: "#6a7078"; font.pointSize: 7; font.family: "monospace"
                             wrapMode: Text.Wrap
-                            width: parent.width
+                            elide: Text.ElideRight
+                            maximumLineCount: 3
                         }
                     }
                 }
@@ -451,18 +465,21 @@ PlasmoidItem {
                     radius: 3
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 6
-                        spacing: 2
+                        anchors.margins: 8
+                        spacing: 3
                         Label {
+                            Layout.fillWidth: true
                             text: "ollama  pid " + modelData.pid
                                  + (modelData.subcmd ? "  " + modelData.subcmd : "")
                             color: "#e8c33a"; font.bold: true; font.pointSize: 9
                         }
                         Label {
+                            Layout.fillWidth: true
                             text: modelData.cmdline
                             color: "#6a7078"; font.pointSize: 7; font.family: "monospace"
                             wrapMode: Text.Wrap
-                            width: parent.width
+                            elide: Text.ElideRight
+                            maximumLineCount: 3
                         }
                     }
                 }
@@ -490,18 +507,21 @@ PlasmoidItem {
                     radius: 3
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 6
-                        spacing: 2
+                        anchors.margins: 8
+                        spacing: 3
                         Label {
+                            Layout.fillWidth: true
                             text: "vllm  pid " + modelData.pid
                                  + (modelData.model ? "  " + modelData.model : "")
                             color: "#b07fe8"; font.bold: true; font.pointSize: 9
                         }
                         Label {
+                            Layout.fillWidth: true
                             text: modelData.cmdline
                             color: "#6a7078"; font.pointSize: 7; font.family: "monospace"
                             wrapMode: Text.Wrap
-                            width: parent.width
+                            elide: Text.ElideRight
+                            maximumLineCount: 3
                         }
                     }
                 }
