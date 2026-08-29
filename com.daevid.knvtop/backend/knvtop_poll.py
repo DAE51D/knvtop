@@ -416,8 +416,12 @@ def _fdinfo_gpu_stats(pid):
     llama.cpp/ollama/vllm cards can show their own live GPU load/memory,
     not just the system-wide totals)."""
     fdinfo = _fdinfo_engines(pid)
-    if fdinfo is None or not fdinfo["engines"]:
+    if fdinfo is None:
         return None
+    # A DRM client fd with no drm-engine-* key yet is still a real GPU
+    # client (nvtop shows these too, e.g. systemd-logind/init holding a
+    # DRM master fd for VT handoff with no measurable engine time) --
+    # only "no DRM fd at all" should exclude a process, not "idle so far".
     pct = _gpu_engine_pct(int(pid), fdinfo["engines"]) or {}
     types = []
     if "gfx" in fdinfo["engines"]:
