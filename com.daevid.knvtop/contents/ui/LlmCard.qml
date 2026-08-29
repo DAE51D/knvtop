@@ -84,7 +84,15 @@ Rectangle {
                 + "   Host MEM: " + card.fmtMiB(card.hostMemKb)
             color: "#aeb4bb"
             font.pointSize: 8
-            wrapMode: Text.Wrap
+            // NOT wrapped, deliberately: this line's numbers change every
+            // poll tick, and a digit-count crossing a width threshold
+            // (e.g. "9%" -> "10%") would make it intermittently wrap to
+            // two lines and back, changing this card's height and hopping
+            // the scroll position under the user every second. It always
+            // comfortably fits the card width unwrapped; NoWrap trades an
+            // impossible-in-practice overflow for a guaranteed-stable
+            // height instead.
+            wrapMode: Text.NoWrap
         }
         Text {
             Layout.fillWidth: true
