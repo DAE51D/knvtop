@@ -275,6 +275,15 @@ PlasmoidItem {
         ScrollView {
             id: scrollView
             anchors.fill: parent
+            // The ring row and stats row have no background of their own
+            // (unlike the graph/card Rectangles), so without this they show
+            // through to the Plasma popup dialog's own theme background --
+            // on a light color scheme that made the ring labels/stats text
+            // (colors picked for a dark backdrop) hard to read. Giving the
+            // whole popup the same dark background the rest of the widget
+            // already uses keeps it consistent regardless of the user's
+            // Plasma theme.
+            background: Rectangle { color: "#101418" }
             // ColumnLayout { width: parent.width } inside a ScrollView is a
             // classic trap: "parent" here is the ScrollView's internal
             // Flickable, whose own width can settle smaller than the
