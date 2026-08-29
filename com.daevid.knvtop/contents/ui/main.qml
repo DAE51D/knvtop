@@ -53,7 +53,7 @@ PlasmoidItem {
 
     function mb(v) {
         if (v === null || v === undefined) return "N/A";
-        return (v / 1073741824).toFixed(1) + " GiB";
+        return (v / 1024).toFixed(1) + " GiB";
     }
 
     function pctNorm(v, floor, max) {
@@ -263,145 +263,136 @@ PlasmoidItem {
             width: parent.width
             spacing: 8
 
-            // header
+            // 5 ring gauges in widget order: GPU MEM TMP PWR CPU
             RowLayout {
                 Layout.fillWidth: true
-                Label { text: "knvtop"; font.bold: true; font.pointSize: 12 }
-                Item { Layout.fillWidth: true }
-                Label {
-                    text: pollerAlive ? "● live" : "○ poller down"
-                    color: pollerAlive ? "#3ddc84" : "#e85555"
-                    font.pointSize: 9
+                spacing: 8
+
+                // GPU (blue)
+                Item {
+                    Layout.preferredWidth: 64; Layout.preferredHeight: 64
+                    Canvas {
+                        anchors.fill: parent
+                        onPaint: {
+                            var ctx = getContext("2d"); ctx.reset()
+                            var cx = width/2, cy = height/2, r = Math.min(cx,cy) - 4
+                            var v = root.gpu.util || 0
+                            ctx.lineWidth = 5; ctx.strokeStyle = "#3a3f45"
+                            ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke()
+                            ctx.strokeStyle = "#4d9fff"
+                            ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+(Math.min(100,v)/100)*Math.PI*2); ctx.stroke()
+                            ctx.fillStyle = "#c8ccd2"; ctx.font = "bold 12px sans-serif"
+                            ctx.textAlign = "center"; ctx.textBaseline = "middle"
+                            ctx.fillText(Math.round(v)+"%", cx, cy-3)
+                            ctx.font = "7px sans-serif"; ctx.fillStyle = "#8a9199"
+                            ctx.fillText("GPU", cx, cy+10)
+                        }
+                    }
+                }
+                // MEM (yellow)
+                Item {
+                    Layout.preferredWidth: 64; Layout.preferredHeight: 64
+                    Canvas {
+                        anchors.fill: parent
+                        onPaint: {
+                            var ctx = getContext("2d"); ctx.reset()
+                            var cx = width/2, cy = height/2, r = Math.min(cx,cy) - 4
+                            var v = (root.gpu.mem_used !== null && root.gpu.mem_total) ? root.gpu.mem_used*100/root.gpu.mem_total : 0
+                            ctx.lineWidth = 5; ctx.strokeStyle = "#3a3f45"
+                            ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke()
+                            ctx.strokeStyle = "#e8c33a"
+                            ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+(Math.min(100,v)/100)*Math.PI*2); ctx.stroke()
+                            ctx.fillStyle = "#c8ccd2"; ctx.font = "bold 12px sans-serif"
+                            ctx.textAlign = "center"; ctx.textBaseline = "middle"
+                            ctx.fillText(Math.round(v)+"%", cx, cy-3)
+                            ctx.font = "7px sans-serif"; ctx.fillStyle = "#8a9199"
+                            ctx.fillText("MEM", cx, cy+10)
+                        }
+                    }
+                }
+                // TMP (purple)
+                Item {
+                    Layout.preferredWidth: 64; Layout.preferredHeight: 64
+                    Canvas {
+                        anchors.fill: parent
+                        onPaint: {
+                            var ctx = getContext("2d"); ctx.reset()
+                            var cx = width/2, cy = height/2, r = Math.min(cx,cy) - 4
+                            var v = root.gpu.temp || 0
+                            var pct = Math.min(100, v * 100 / root.tempMax)
+                            ctx.lineWidth = 5; ctx.strokeStyle = "#3a3f45"
+                            ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke()
+                            ctx.strokeStyle = "#b07fe8"
+                            ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+(pct/100)*Math.PI*2); ctx.stroke()
+                            ctx.fillStyle = "#c8ccd2"; ctx.font = "bold 12px sans-serif"
+                            ctx.textAlign = "center"; ctx.textBaseline = "middle"
+                            ctx.fillText(Math.round(v)+"°", cx, cy-3)
+                            ctx.font = "7px sans-serif"; ctx.fillStyle = "#8a9199"
+                            ctx.fillText("TMP", cx, cy+10)
+                        }
+                    }
+                }
+                // PWR (green)
+                Item {
+                    Layout.preferredWidth: 64; Layout.preferredHeight: 64
+                    Canvas {
+                        anchors.fill: parent
+                        onPaint: {
+                            var ctx = getContext("2d"); ctx.reset()
+                            var cx = width/2, cy = height/2, r = Math.min(cx,cy) - 4
+                            var cap = root.gpu.power_cap_w || 100
+                            var v = root.gpu.power_w || 0
+                            var pct = Math.min(100, v * 100 / cap)
+                            ctx.lineWidth = 5; ctx.strokeStyle = "#3a3f45"
+                            ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke()
+                            ctx.strokeStyle = "#3ddc84"
+                            ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+(pct/100)*Math.PI*2); ctx.stroke()
+                            ctx.fillStyle = "#c8ccd2"; ctx.font = "bold 12px sans-serif"
+                            ctx.textAlign = "center"; ctx.textBaseline = "middle"
+                            ctx.fillText(Math.round(v)+"W", cx, cy-3)
+                            ctx.font = "7px sans-serif"; ctx.fillStyle = "#8a9199"
+                            ctx.fillText("PWR", cx, cy+10)
+                        }
+                    }
+                }
+                // CPU (orange)
+                Item {
+                    Layout.preferredWidth: 64; Layout.preferredHeight: 64
+                    Canvas {
+                        anchors.fill: parent
+                        onPaint: {
+                            var ctx = getContext("2d"); ctx.reset()
+                            var cx = width/2, cy = height/2, r = Math.min(cx,cy) - 4
+                            var v = root.sys.cpu || 0
+                            ctx.lineWidth = 5; ctx.strokeStyle = "#3a3f45"
+                            ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke()
+                            ctx.strokeStyle = "#ff8c42"
+                            ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+(Math.min(100,v)/100)*Math.PI*2); ctx.stroke()
+                            ctx.fillStyle = "#c8ccd2"; ctx.font = "bold 12px sans-serif"
+                            ctx.textAlign = "center"; ctx.textBaseline = "middle"
+                            ctx.fillText(Math.round(v)+"%", cx, cy-3)
+                            ctx.font = "7px sans-serif"; ctx.fillStyle = "#8a9199"
+                            ctx.fillText("CPU", cx, cy+10)
+                        }
+                    }
                 }
             }
 
-            // ring gauges row
-            RowLayout {
+            // stats line
+            Label {
                 Layout.fillWidth: true
-                spacing: 12
-
-                // CPU ring
-                Item {
-                    Layout.preferredWidth: 70
-                    Layout.preferredHeight: 70
-                    Canvas {
-                        anchors.fill: parent
-                        onPaint: {
-                            var ctx = getContext("2d")
-                            ctx.reset()
-                            var cx = width / 2, cy = height / 2
-                            var r = Math.min(cx, cy) - 4
-                            var cpu = root.sys.cpu || 0
-                            ctx.lineWidth = 5
-                            ctx.strokeStyle = "#2a2f35"
-                            ctx.beginPath()
-                            ctx.arc(cx, cy, r, 0, Math.PI * 2)
-                            ctx.stroke()
-                            ctx.strokeStyle = "#ff8c42"
-                            ctx.beginPath()
-                            ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + (cpu / 100) * Math.PI * 2)
-                            ctx.stroke()
-                            ctx.fillStyle = "#c8ccd2"
-                            ctx.font = "bold 14px sans-serif"
-                            ctx.textAlign = "center"
-                            ctx.textBaseline = "middle"
-                            ctx.fillText(Math.round(cpu) + "%", cx, cy - 4)
-                            ctx.font = "8px sans-serif"
-                            ctx.fillStyle = "#8a9199"
-                            ctx.fillText("CPU", cx, cy + 10)
-                        }
-                    }
-                }
-
-                // GPU ring
-                Item {
-                    Layout.preferredWidth: 70
-                    Layout.preferredHeight: 70
-                    Canvas {
-                        anchors.fill: parent
-                        onPaint: {
-                            var ctx = getContext("2d")
-                            ctx.reset()
-                            var cx = width / 2, cy = height / 2
-                            var r = Math.min(cx, cy) - 4
-                            var util = root.gpu.util || 0
-                            ctx.lineWidth = 5
-                            ctx.strokeStyle = "#2a2f35"
-                            ctx.beginPath()
-                            ctx.arc(cx, cy, r, 0, Math.PI * 2)
-                            ctx.stroke()
-                            ctx.strokeStyle = "#4d9fff"
-                            ctx.beginPath()
-                            ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + (util / 100) * Math.PI * 2)
-                            ctx.stroke()
-                            ctx.fillStyle = "#c8ccd2"
-                            ctx.font = "bold 14px sans-serif"
-                            ctx.textAlign = "center"
-                            ctx.textBaseline = "middle"
-                            ctx.fillText(Math.round(util) + "%", cx, cy - 4)
-                            ctx.font = "8px sans-serif"
-                            ctx.fillStyle = "#8a9199"
-                            ctx.fillText("GPU", cx, cy + 10)
-                        }
-                    }
-                }
-
-                // MEM ring
-                Item {
-                    Layout.preferredWidth: 70
-                    Layout.preferredHeight: 70
-                    Canvas {
-                        anchors.fill: parent
-                        onPaint: {
-                            var ctx = getContext("2d")
-                            ctx.reset()
-                            var cx = width / 2, cy = height / 2
-                            var r = Math.min(cx, cy) - 4
-                            var memPct = (root.gpu.mem_used !== null && root.gpu.mem_total)
-                                          ? root.gpu.mem_used * 100 / root.gpu.mem_total : 0
-                            ctx.lineWidth = 5
-                            ctx.strokeStyle = "#2a2f35"
-                            ctx.beginPath()
-                            ctx.arc(cx, cy, r, 0, Math.PI * 2)
-                            ctx.stroke()
-                            ctx.strokeStyle = "#e8c33a"
-                            ctx.beginPath()
-                            ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + (memPct / 100) * Math.PI * 2)
-                            ctx.stroke()
-                            ctx.fillStyle = "#c8ccd2"
-                            ctx.font = "bold 14px sans-serif"
-                            ctx.textAlign = "center"
-                            ctx.textBaseline = "middle"
-                            ctx.fillText(Math.round(memPct) + "%", cx, cy - 4)
-                            ctx.font = "8px sans-serif"
-                            ctx.fillStyle = "#8a9199"
-                            ctx.fillText("MEM", cx, cy + 10)
-                        }
-                    }
-                }
-
-                // stats column
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 2
-                    Label {
-                        text: "GPU " + (root.gpu.mem_used !== null && root.gpu.mem_total ? root.mb(root.gpu.mem_used) + "/" + root.mb(root.gpu.mem_total) : "N/A")
-                             + "  " + root.fmt(root.gpu.temp, "°C", 1)
-                             + "  " + root.fmt(root.gpu.power_w, "W", 1)
-                        color: "#c8ccd2"; font.pointSize: 9
-                    }
-                    Label {
-                        text: "sys RAM " + root.mb(root.sys.ram_used) + "/" + root.mb(root.sys.ram_total)
-                             + "  load " + root.sys.load1.toFixed(2) + " " + root.sys.load5.toFixed(2) + " " + root.sys.load15.toFixed(2)
-                        color: "#8a9199"; font.pointSize: 9
-                    }
-                }
+                text: "GPU " + (root.gpu.mem_used !== null && root.gpu.mem_total ? root.mb(root.gpu.mem_used) + "/" + root.mb(root.gpu.mem_total) : "N/A")
+                     + "  " + root.fmt(root.gpu.temp, "°C", 1)
+                     + "  " + root.fmt(root.gpu.power_w, "W", 1)
+                     + "   sys " + root.mb(root.sys.ram_used) + "/" + root.mb(root.sys.ram_total)
+                     + "  load " + root.sys.load1.toFixed(2)
+                color: "#8a9199"; font.pointSize: 8
             }
 
             // graph section
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 100
+                Layout.preferredHeight: 80
                 color: "#101418"
                 radius: 3
                 Item {
@@ -415,12 +406,11 @@ PlasmoidItem {
                 }
             }
 
-            // llama.cpp section
+            // llama.cpp — only show instances with a model loaded
             Repeater {
-                model: root.llama
+                model: root.llama.filter(function(l) { return l.model !== null && l.model !== undefined && l.model !== "" })
                 delegate: Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 60
                     color: "#1a1f25"
                     radius: 3
                     ColumnLayout {
@@ -445,18 +435,18 @@ PlasmoidItem {
                         Label {
                             text: modelData.cmdline
                             color: "#6a7078"; font.pointSize: 7; font.family: "monospace"
-                            elide: Text.ElideRight
+                            wrapMode: Text.Wrap
+                            width: parent.width
                         }
                     }
                 }
             }
 
-            // ollama section
+            // ollama — only show if there are loaded models
             Repeater {
-                model: root.ollama
+                model: root.ollamaModels.length > 0 ? root.ollama : []
                 delegate: Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 40
                     color: "#1a1f25"
                     radius: 3
                     ColumnLayout {
@@ -471,7 +461,8 @@ PlasmoidItem {
                         Label {
                             text: modelData.cmdline
                             color: "#6a7078"; font.pointSize: 7; font.family: "monospace"
-                            elide: Text.ElideRight
+                            wrapMode: Text.Wrap
+                            width: parent.width
                         }
                     }
                 }
@@ -490,12 +481,11 @@ PlasmoidItem {
                 }
             }
 
-            // vllm section
+            // vllm — only show instances with a model
             Repeater {
-                model: root.vllm
+                model: root.vllm.filter(function(v) { return v.model !== null && v.model !== undefined && v.model !== "" })
                 delegate: Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 40
                     color: "#1a1f25"
                     radius: 3
                     ColumnLayout {
@@ -504,12 +494,14 @@ PlasmoidItem {
                         spacing: 2
                         Label {
                             text: "vllm  pid " + modelData.pid
+                                 + (modelData.model ? "  " + modelData.model : "")
                             color: "#b07fe8"; font.bold: true; font.pointSize: 9
                         }
                         Label {
                             text: modelData.cmdline
                             color: "#6a7078"; font.pointSize: 7; font.family: "monospace"
-                            elide: Text.ElideRight
+                            wrapMode: Text.Wrap
+                            width: parent.width
                         }
                     }
                 }

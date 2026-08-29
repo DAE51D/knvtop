@@ -66,8 +66,8 @@ def _amd_smi():
             "mem_used": val(m.get("used_gtt")),
             "mem_total": val(m.get("total_gtt")),
             "temp": val(t.get("apu_temperature_gfx")) or val(t.get("edge")),
-            "power_w": val(p.get("apu_average_gfx_power"))
-            or val(p.get("socket_power")),
+            "power_w": val(p.get("socket_power"))
+            or val(p.get("apu_average_gfx_power")),
             "power_cap_w": None,  # amd-smi does not expose the cap; try sysfs
         }
     except Exception:
