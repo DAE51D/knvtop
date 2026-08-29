@@ -23,7 +23,7 @@ sys.path.insert(
         os.path.dirname(os.path.abspath(__file__)), "..", "com.daevid.knvtop", "backend"
     ),
 )
-from knvtop_poll import gpu_sample, sys_sample, llm_sample, ollama_ps
+from knvtop_poll import gpu_sample, sys_sample, llm_sample, ollama_ps, gpu_proc_sample
 
 import dbus
 import dbus.service
@@ -40,6 +40,7 @@ class KnvtopService:
             "gpu": {},
             "sys": {},
             "llm": {"llama": [], "ollama": [], "vllm": [], "ollama_models": []},
+            "gpu_procs": [],
         }
         self._lock = threading.Lock()
         self._stop = threading.Event()
@@ -61,7 +62,12 @@ class KnvtopService:
             try:
                 llm = llm_sample()
                 llm["ollama_models"] = ollama_ps() or []
-                sample = {"gpu": gpu_sample(), "sys": sys_sample(), "llm": llm}
+                sample = {
+                    "gpu": gpu_sample(),
+                    "sys": sys_sample(),
+                    "llm": llm,
+                    "gpu_procs": gpu_proc_sample(),
+                }
                 with self._lock:
                     self._latest = sample
             except Exception:

@@ -29,9 +29,6 @@ PlasmoidItem {
     property var ollamaModels: []
     property var gpuProcs: []
 
-    // User/Type apply to whichever list is showing (AI/LLM-only cards or
-    // the full generic list) -- not just the generic one, so this is
-    // shared by both rather than baked only into filteredGpuProcs.
     function matchesFilters(entry) {
         var user = Plasmoid.configuration.filterUser
         if (user && user !== "All Users" && entry.user !== user) return false
@@ -41,11 +38,38 @@ PlasmoidItem {
         return true
     }
 
-    // Every GPU process, filtered per the config page's user/type
-    // selection -- only computed/shown when "AI/LLM processes only" is off.
-    readonly property var filteredGpuProcs: {
-        if (Plasmoid.configuration.llmOnly) return []
-        return root.gpuProcs.filter(root.matchesFilters)
+    // ONE process list, not two separate views: every GPU-touching process
+    // (gpuProcs) merged by pid with the recognized-by-name LLM entries
+    // (llama/ollama/vllm), which may not even show up in gpuProcs at all
+    // (e.g. a pure HTTP router in front of the real GPU workers has no
+    // open DRM fd of its own). "AI/LLM processes only" narrows this one
+    // list down to entries with a recognized kind; it does not switch to
+    // a different, disjoint list.
+    readonly property var unifiedProcs: {
+        var byPid = {}
+        for (var i = 0; i < root.gpuProcs.length; i++) {
+            var g = root.gpuProcs[i]
+            byPid[g.pid] = Object.assign({ kind: null }, g)
+        }
+        function layer(list, kind) {
+            for (var j = 0; j < list.length; j++) {
+                var e = list[j]
+                byPid[e.pid] = Object.assign({}, byPid[e.pid] || {}, e, { kind: kind })
+            }
+        }
+        layer(root.llama.filter(function(l) { return l.model }), "llama")
+        layer(root.ollama, "ollama")
+        layer(root.vllm.filter(function(v) { return v.model }), "vllm")
+        var out = []
+        for (var pid in byPid) out.push(byPid[pid])
+        return out
+    }
+
+    readonly property var visibleProcs: {
+        var list = root.unifiedProcs
+        if (Plasmoid.configuration.llmOnly)
+            list = list.filter(function(p) { return p.kind !== null })
+        return list.filter(root.matchesFilters)
     }
 
     readonly property int windowSize: 21
@@ -445,104 +469,62 @@ PlasmoidItem {
                     }
                 }
 
-                // llama.cpp — only show instances with a model loaded.
-                // Gating on llmOnly here (not a Repeater "visible:" binding
-                // -- that's a no-op: a Repeater is a non-visual
-                // instantiator, its delegates are inserted as siblings of
-                // it, not children, so setting visible on the Repeater
-                // itself never actually hides them).
+                // One process list. "AI/LLM processes only" narrows it to
+                // entries with a recognized kind (see root.visibleProcs);
+                // it doesn't switch to a separate, disjoint view -- with it
+                // off you get everything, LLM entries included.
                 Repeater {
-                    model: !Plasmoid.configuration.llmOnly ? [] : root.llama.filter(function(l) {
-                        return l.model !== null && l.model !== undefined && l.model !== "" && root.matchesFilters(l)
-                    })
+                    model: root.visibleProcs
                     delegate: LlmCard {
-                        titleColor: "#4d9fff"
-                        // pid/port/model filename are already in the gray cmdline
-                        // text below, so they're dropped from the bold title;
-                        // pid moves to the subtitle instead, de-emphasized
-                        title: "llama.cpp"
-                             + (modelData.alias ? "  [" + modelData.alias + "]" : "")
+                        titleColor: modelData.kind === "llama" ? "#4d9fff"
+                                  : modelData.kind === "ollama" ? "#e8c33a"
+                                  : modelData.kind === "vllm" ? "#b07fe8"
+                                  : Kirigami.Theme.positiveTextColor
+                        // pid/port/model filename are already in the gray
+                        // cmdline/flags text below for llama/vllm, so
+                        // they're dropped from the bold title there; pid
+                        // moves into the subtitle instead, de-emphasized
+                        title: modelData.kind === "llama"
+                                   ? "llama.cpp" + (modelData.alias ? "  [" + modelData.alias + "]" : "")
+                             : modelData.kind === "ollama"
+                                   ? "ollama" + (modelData.subcmd ? "  " + modelData.subcmd : "")
+                             : modelData.kind === "vllm"
+                                   ? "vllm" + (modelData.model ? "  [" + modelData.model + "]" : "")
+                             : modelData.name
                         gpuPct: modelData.gpu_pct
                         vramKb: modelData.vram_kb
                         cpuPct: modelData.cpu_pct
                         hostMemKb: modelData.rss_kb
-                        subtitle: "ngl: " + (modelData.ngl || "N/A")
-                             + "   ctx: " + (modelData.ctx || "N/A")
-                             + "   parallel: " + (modelData.parallel || "N/A")
-                             + "   threads: " + (modelData.threads || "N/A")
-                             + "   pid: " + modelData.pid
+                        subtitle: modelData.kind === "llama"
+                                      ? "ngl: " + (modelData.ngl || "N/A")
+                                        + "   ctx: " + (modelData.ctx || "N/A")
+                                        + "   parallel: " + (modelData.parallel || "N/A")
+                                        + "   threads: " + (modelData.threads || "N/A")
+                                        + "   pid: " + modelData.pid
+                                  : modelData.kind === "ollama" || modelData.kind === "vllm"
+                                      ? "pid: " + modelData.pid
+                                  : "user: " + modelData.user
+                                    + "   type: " + (modelData.type && modelData.type.length ? modelData.type.join("+") : "N/A")
+                                    + "   pid: " + modelData.pid
+                        cmdline: modelData.kind === "ollama" ? modelData.cmdline : ""
                         argv: modelData.argv || []
-                    }
-                }
-
-                // ollama — only show if there are loaded models
-                Repeater {
-                    model: (!Plasmoid.configuration.llmOnly || root.ollamaModels.length === 0)
-                           ? [] : root.ollama.filter(root.matchesFilters)
-                    delegate: LlmCard {
-                        titleColor: "#e8c33a"
-                        title: "ollama" + (modelData.subcmd ? "  " + modelData.subcmd : "")
-                        gpuPct: modelData.gpu_pct
-                        vramKb: modelData.vram_kb
-                        cpuPct: modelData.cpu_pct
-                        hostMemKb: modelData.rss_kb
-                        subtitle: "pid: " + modelData.pid
-                        cmdline: modelData.cmdline
                     }
                 }
 
                 // ollama — one card per loaded model, same treatment as
                 // llama.cpp/vllm (ollama doesn't expose CLI flags per model,
-                // so the subtitle carries the equivalent info instead)
+                // so the subtitle carries the equivalent info instead).
+                // Not a "process" (no PID), so it sits outside unifiedProcs
+                // and isn't affected by the checkbox or User/Type filters
+                // -- always shown alongside whichever process view is up.
                 Repeater {
-                    model: Plasmoid.configuration.llmOnly ? root.ollamaModels : []
+                    model: root.ollamaModels
                     delegate: LlmCard {
                         titleColor: "#e8c33a"
                         title: "ollama  [" + modelData.name + "]"
                         subtitle: "params: " + (modelData.parameter_size || "N/A")
                              + "   quant: " + (modelData.quantization || "N/A")
                              + "   vram: " + (modelData.size_vram ? (modelData.size_vram / 1073741824).toFixed(1) + " GiB" : "N/A")
-                    }
-                }
-
-                // vllm — only show instances with a model
-                Repeater {
-                    model: !Plasmoid.configuration.llmOnly ? [] : root.vllm.filter(function(v) {
-                        return v.model !== null && v.model !== undefined && v.model !== "" && root.matchesFilters(v)
-                    })
-                    delegate: LlmCard {
-                        titleColor: "#b07fe8"
-                        // vllm has no alias field, so (unlike llama.cpp) the
-                        // model name is the only identifier available for the
-                        // title — keep it, bracketed to match the alias style
-                        title: "vllm" + (modelData.model ? "  [" + modelData.model + "]" : "")
-                        gpuPct: modelData.gpu_pct
-                        vramKb: modelData.vram_kb
-                        cpuPct: modelData.cpu_pct
-                        hostMemKb: modelData.rss_kb
-                        subtitle: "pid: " + modelData.pid
-                        argv: modelData.argv || []
-                    }
-                }
-
-                // generic GPU process list (nvtop-style), shown instead of
-                // the LLM-only cards above when "AI/LLM processes only" is
-                // switched off in the config page; filteredGpuProcs already
-                // applies the user/type filters and is empty when llmOnly
-                // is on, so no separate visible: guard is needed here.
-                Repeater {
-                    model: root.filteredGpuProcs
-                    delegate: LlmCard {
-                        titleColor: Kirigami.Theme.positiveTextColor
-                        title: modelData.name
-                        gpuPct: modelData.gpu_pct
-                        vramKb: modelData.vram_kb
-                        cpuPct: modelData.cpu_pct
-                        hostMemKb: modelData.rss_kb
-                        subtitle: "user: " + modelData.user
-                             + "   type: " + modelData.type.join("+")
-                             + "   pid: " + modelData.pid
-                        argv: modelData.argv || []
                     }
                 }
             }
