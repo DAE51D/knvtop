@@ -267,16 +267,26 @@ PlasmoidItem {
     // is what keeps the dialog from ending up wider than the ScrollView
     // actually filling it.
     fullRepresentation: Item {
-        Layout.minimumWidth: inPanel ? 400 : 460
-        Layout.preferredWidth: inPanel ? 560 : 640
+        Layout.minimumWidth: inPanel ? 420 : 480
+        Layout.preferredWidth: inPanel ? 580 : 660
         Layout.minimumHeight: 320
         Layout.preferredHeight: inPanel ? 440 : 540
 
         ScrollView {
+            id: scrollView
             anchors.fill: parent
+            // ColumnLayout { width: parent.width } inside a ScrollView is a
+            // classic trap: "parent" here is the ScrollView's internal
+            // Flickable, whose own width can settle smaller than the
+            // ScrollView's actual width depending on how contentWidth gets
+            // established, leaving content narrower than the popup with a
+            // permanent gap on the right. ScrollView.availableWidth is
+            // derived directly from the control's own (non-circular) width
+            // and is the documented way to size content to fill it exactly.
+            contentWidth: availableWidth
 
             ColumnLayout {
-                width: parent.width
+                width: scrollView.availableWidth
                 spacing: 8
 
                 // 5 ring gauges in widget order: GPU MEM TMP PWR CPU (click to toggle line).
@@ -328,9 +338,10 @@ PlasmoidItem {
                 }
 
                 // stats chips — wraps per-chip instead of mid-word, and never
-                // visually crowds the ring row above it
+                // visually crowds the ring row above it. Centered (not
+                // fillWidth) to match the ring row's presentation.
                 Flow {
-                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignHCenter
                     Layout.topMargin: 2
                     spacing: 12
 
