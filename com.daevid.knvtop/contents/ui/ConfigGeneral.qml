@@ -52,10 +52,12 @@ KCM.SimpleKCM {
             text: "AI/LLM processes only"
         }
 
+        // User/Type apply within whichever list is showing -- AI/LLM-only
+        // or the full generic list -- not just the generic one, so they
+        // stay enabled regardless of the checkbox above.
         QQC2.ComboBox {
             id: userBox
             Kirigami.FormData.label: "Filter by user:"
-            enabled: !llmOnlyBox.checked
             editable: true
             model: ["All Users"]
             currentIndex: 0
@@ -66,7 +68,6 @@ KCM.SimpleKCM {
         QQC2.ComboBox {
             id: typeBox
             Kirigami.FormData.label: "Filter by type:"
-            enabled: !llmOnlyBox.checked
             textRole: "label"
             valueRole: "key"
             model: [

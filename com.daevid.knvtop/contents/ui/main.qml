@@ -29,18 +29,23 @@ PlasmoidItem {
     property var ollamaModels: []
     property var gpuProcs: []
 
+    // User/Type apply to whichever list is showing (AI/LLM-only cards or
+    // the full generic list) -- not just the generic one, so this is
+    // shared by both rather than baked only into filteredGpuProcs.
+    function matchesFilters(entry) {
+        var user = Plasmoid.configuration.filterUser
+        if (user && user !== "All Users" && entry.user !== user) return false
+        var type = Plasmoid.configuration.filterType
+        if ((type === "graphic" || type === "compute")
+                && (!entry.type || entry.type.indexOf(type) === -1)) return false
+        return true
+    }
+
     // Every GPU process, filtered per the config page's user/type
     // selection -- only computed/shown when "AI/LLM processes only" is off.
     readonly property var filteredGpuProcs: {
         if (Plasmoid.configuration.llmOnly) return []
-        var list = root.gpuProcs
-        var user = Plasmoid.configuration.filterUser
-        if (user && user !== "All Users")
-            list = list.filter(function(p) { return p.user === user })
-        var type = Plasmoid.configuration.filterType
-        if (type === "graphic" || type === "compute")
-            list = list.filter(function(p) { return p.type.indexOf(type) !== -1 })
-        return list
+        return root.gpuProcs.filter(root.matchesFilters)
     }
 
     readonly property int windowSize: 21
@@ -440,10 +445,16 @@ PlasmoidItem {
                     }
                 }
 
-                // llama.cpp — only show instances with a model loaded
+                // llama.cpp — only show instances with a model loaded.
+                // Gating on llmOnly here (not a Repeater "visible:" binding
+                // -- that's a no-op: a Repeater is a non-visual
+                // instantiator, its delegates are inserted as siblings of
+                // it, not children, so setting visible on the Repeater
+                // itself never actually hides them).
                 Repeater {
-                    visible: Plasmoid.configuration.llmOnly
-                    model: root.llama.filter(function(l) { return l.model !== null && l.model !== undefined && l.model !== "" })
+                    model: !Plasmoid.configuration.llmOnly ? [] : root.llama.filter(function(l) {
+                        return l.model !== null && l.model !== undefined && l.model !== "" && root.matchesFilters(l)
+                    })
                     delegate: LlmCard {
                         titleColor: "#4d9fff"
                         // pid/port/model filename are already in the gray cmdline
@@ -466,8 +477,8 @@ PlasmoidItem {
 
                 // ollama — only show if there are loaded models
                 Repeater {
-                    visible: Plasmoid.configuration.llmOnly
-                    model: root.ollamaModels.length > 0 ? root.ollama : []
+                    model: (!Plasmoid.configuration.llmOnly || root.ollamaModels.length === 0)
+                           ? [] : root.ollama.filter(root.matchesFilters)
                     delegate: LlmCard {
                         titleColor: "#e8c33a"
                         title: "ollama" + (modelData.subcmd ? "  " + modelData.subcmd : "")
@@ -484,8 +495,7 @@ PlasmoidItem {
                 // llama.cpp/vllm (ollama doesn't expose CLI flags per model,
                 // so the subtitle carries the equivalent info instead)
                 Repeater {
-                    visible: Plasmoid.configuration.llmOnly
-                    model: root.ollamaModels
+                    model: Plasmoid.configuration.llmOnly ? root.ollamaModels : []
                     delegate: LlmCard {
                         titleColor: "#e8c33a"
                         title: "ollama  [" + modelData.name + "]"
@@ -497,8 +507,9 @@ PlasmoidItem {
 
                 // vllm — only show instances with a model
                 Repeater {
-                    visible: Plasmoid.configuration.llmOnly
-                    model: root.vllm.filter(function(v) { return v.model !== null && v.model !== undefined && v.model !== "" })
+                    model: !Plasmoid.configuration.llmOnly ? [] : root.vllm.filter(function(v) {
+                        return v.model !== null && v.model !== undefined && v.model !== "" && root.matchesFilters(v)
+                    })
                     delegate: LlmCard {
                         titleColor: "#b07fe8"
                         // vllm has no alias field, so (unlike llama.cpp) the

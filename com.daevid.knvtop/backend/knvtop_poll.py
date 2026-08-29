@@ -277,6 +277,10 @@ def llm_sample():
         gpu_stats = _fdinfo_gpu_stats(pid)
         entry["gpu_pct"] = gpu_stats["gpu_pct"] if gpu_stats else None
         entry["vram_kb"] = gpu_stats["vram_kb"] if gpu_stats else None
+        # user/type so the config page's User/Type filters can apply to
+        # these cards too, not just the generic gpu_procs list.
+        entry["type"] = gpu_stats["types"] if gpu_stats else []
+        entry["user"] = _username(pid) or "?"
         if exe.startswith("llama"):
             entry["model"] = _find("--model", argv)
             entry["ngl"] = _find("--n-gpu-layers", argv)
