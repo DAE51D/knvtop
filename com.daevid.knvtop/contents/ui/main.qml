@@ -267,8 +267,8 @@ PlasmoidItem {
     // is what keeps the dialog from ending up wider than the ScrollView
     // actually filling it.
     fullRepresentation: Item {
-        Layout.minimumWidth: inPanel ? 420 : 480
-        Layout.preferredWidth: inPanel ? 580 : 660
+        Layout.minimumWidth: inPanel ? 380 : 420
+        Layout.preferredWidth: inPanel ? 460 : 520
         Layout.minimumHeight: 320
         Layout.preferredHeight: inPanel ? 440 : 540
 
