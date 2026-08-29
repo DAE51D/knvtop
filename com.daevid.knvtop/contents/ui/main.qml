@@ -69,7 +69,15 @@ PlasmoidItem {
         var list = root.unifiedProcs
         if (Plasmoid.configuration.llmOnly)
             list = list.filter(function(p) { return p.kind !== null })
-        return list.filter(root.matchesFilters)
+        list = list.filter(root.matchesFilters)
+        // Stable order is what keeps cards from shuffling under a scroll:
+        // this list is rebuilt from scratch every poll tick (a fresh
+        // /proc scan, JS object key order isn't a reliable proxy for
+        // "same as last tick"), so without an explicit sort the Repeater
+        // sees a different-looking array each second even when the same
+        // processes are still running.
+        list.sort(function(a, b) { return a.pid - b.pid })
+        return list
     }
 
     readonly property int windowSize: 21
@@ -436,17 +444,27 @@ PlasmoidItem {
                     Layout.topMargin: 2
                     spacing: 12
 
+                    // Bold only the number that actually changes tick to
+                    // tick (used/load); the total (78.0 GiB, 92.0 GiB) is
+                    // fixed for this machine and stays normal weight so the
+                    // live value is what pops out.
                     Text {
+                        textFormat: Text.StyledText
                         text: "MEM " + (root.gpu.mem_used !== null && root.gpu.mem_total
-                              ? root.mb(root.gpu.mem_used) + "/" + root.mb(root.gpu.mem_total) : "N/A")
+                              ? "<b>" + (root.gpu.mem_used / 1024).toFixed(1) + "</b> GiB/"
+                                + (root.gpu.mem_total / 1024).toFixed(1) + " GiB"
+                              : "N/A")
                         color: root.mutedTextColor; font.pointSize: 8
                     }
                     Text {
-                        text: "sys " + root.bytes(root.sys.ram_used) + "/" + root.bytes(root.sys.ram_total)
+                        textFormat: Text.StyledText
+                        text: "sys <b>" + (root.sys.ram_used / 1073741824).toFixed(1) + "</b> GiB/"
+                            + (root.sys.ram_total / 1073741824).toFixed(1) + " GiB"
                         color: root.mutedTextColor; font.pointSize: 8
                     }
                     Text {
-                        text: "load " + root.sys.load1.toFixed(2)
+                        textFormat: Text.StyledText
+                        text: "load <b>" + root.sys.load1.toFixed(2) + "</b>"
                         color: root.mutedTextColor; font.pointSize: 8
                     }
                 }

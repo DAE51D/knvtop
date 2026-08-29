@@ -20,6 +20,10 @@ Item {
     property color valueColor: Kirigami.Theme.textColor
     property color labelColor: Qt.rgba(Kirigami.Theme.textColor.r,
         Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.65)
+    // The unfilled track: a light tint of the ring's own color reads much
+    // better than a flat dark gray, same idea as corestrip's Ring.qml.
+    readonly property color trackColor: Qt.rgba(ring.ringColor.r,
+        ring.ringColor.g, ring.ringColor.b, 0.16)
 
     opacity: active ? 1 : 0.3
 
@@ -33,7 +37,7 @@ Item {
             var frac = Math.max(0, Math.min(1, ring.ratio))
 
             ctx.lineWidth = ring.trackWidth
-            ctx.strokeStyle = "#3a3f45"
+            ctx.strokeStyle = ring.trackColor
             ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke()
 
             ctx.strokeStyle = ring.ringColor
@@ -59,6 +63,7 @@ Item {
     onLabelChanged: canvas.requestPaint()
     onValueColorChanged: canvas.requestPaint()
     onLabelColorChanged: canvas.requestPaint()
+    onTrackColorChanged: canvas.requestPaint()
     onWidthChanged: canvas.requestPaint()
     onHeightChanged: canvas.requestPaint()
 }
