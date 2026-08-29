@@ -311,15 +311,36 @@ the nvtop source. Full detail: session memory `knvtop-research.md`.
   `gpu.power_cap_w || 100` (100 W default) as the denominator so the line
   renders even when the cap is null.
 
-### Cosmetic issues (known, not yet fixed)
+### Cosmetic issues (fixed 2026-08-28, corestrip-style component cleanup)
 
-- Full view: ring gauges overlap the stats text to their right.
-- Full view: graph area is too tall relative to the LLM cards below.
-- Full view: LLM card text (cmdline) is truncated — needs word-wrap or
-  horizontal scroll.
-- Compact view: legend text is very small (6pt) — could be 7-8pt.
-- Tooltip: "Click for details" hint is useful but the click target (graph area
-  only) is not obvious.
+- Full view: ring gauges no longer crowd the stats text — the stats line was
+  a single word-wrapped `Text` that read as overlapping the ring row above
+  it; replaced with a `Flow` of short labeled chips (MEM/TMP/PWR/sys/load)
+  that wrap per-chip with clear spacing.
+- Full view: graph area height reduced 120→96px, better balanced against the
+  LLM cards below.
+- Full view: LLM card text wrap was already fixed in `b6ccb76` (ColumnLayout
+  + `height: col.implicitHeight+16`); confirmed still correct after the
+  extraction to `LlmCard.qml`.
+- Compact view: legend font bumped 6pt→7.5pt.
+- Tooltip → click target: added `cursorShape: Qt.PointingHandCursor` to the
+  compact graph-area `MouseArea` for affordance (the click region itself
+  already covered the full graph area, just lacked a visual cue).
+- **Extracted two reusable components (matching corestrip's Ring/Card
+  pattern)**: `Ring.qml` (parameterized Canvas ring gauge — replaces 5x
+  duplicated ~25-line Canvas blocks) and `LlmCard.qml` (replaces 3x
+  duplicated Rectangle+ColumnLayout blocks for llama.cpp/ollama/vllm
+  entries). The 5 ring gauges and legend toggles are now driven by a single
+  `Repeater` over a model array, same pattern already used for the compact
+  legend.
+- **Bug fix found during extraction**: the original inline ring-gauge
+  `Canvas.onPaint` blocks read `root.gpu`/`root.sys` directly with no
+  `requestPaint()` trigger — QML `Canvas` does not repaint just because a
+  property referenced inside `onPaint` changes. The rings likely only ever
+  rendered the value from the instant the popup opened and stayed static
+  while it was open. `Ring.qml` fixes this with explicit
+  `onRatioChanged/onValueTextChanged/onRingColorChanged: canvas.requestPaint()`,
+  matching the working `Sparkline.qml` `onRevisionChanged` pattern.
 
 ## TODO
 
@@ -330,7 +351,7 @@ the nvtop source. Full detail: session memory `knvtop-research.md`.
 - [x] systemd user unit (`knvtop.service`) for the D-Bus service
 - [x] Phase 3: custom `ToolTipView.qml` with colored bars (GPU/MEM/PWR/CPU/RAM)
 - [x] Phase 3: click-to-expand via `root.expanded` + topmost `MouseArea`
-- [ ] Phase 3: cosmetic cleanup (ring gauge overlap, graph height, card text wrap)
+- [x] Phase 3: cosmetic cleanup (ring gauge overlap, graph height, card text wrap)
 - [ ] Phase 4: README + prompt-file sync; optional `config/main.xml`
 - [ ] Milestone commits 1–4 pushed to `main` (Gitea `DAE51D/knvtop`)
 

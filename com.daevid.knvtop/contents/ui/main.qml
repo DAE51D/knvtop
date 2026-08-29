@@ -209,6 +209,7 @@ PlasmoidItem {
 
                 MouseArea {
                     anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
                     onClicked: root.expanded = !root.expanded
                 }
             }
@@ -243,7 +244,7 @@ PlasmoidItem {
                             Label {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: modelData.label
-                                font.pointSize: 6
+                                font.pointSize: 7.5
                                 color: root[modelData.prop] ? "#8a9199" : "#4a4f55"
                                 opacity: root[modelData.prop] ? 1 : 0.4
                             }
@@ -271,144 +272,82 @@ PlasmoidItem {
             // 5 ring gauges in widget order: GPU MEM TMP PWR CPU (click to toggle line)
             RowLayout {
                 Layout.fillWidth: true
+                Layout.bottomMargin: 4
                 spacing: 8
 
-                // GPU (blue)
-                Item {
-                    Layout.preferredWidth: 64; Layout.preferredHeight: 64
-                    opacity: root.showGpu ? 1 : 0.3
-                    Canvas {
-                        anchors.fill: parent
-                        onPaint: {
-                            var ctx = getContext("2d"); ctx.reset()
-                            var cx = width/2, cy = height/2, r = Math.min(cx,cy) - 4
-                            var v = root.gpu.util || 0
-                            ctx.lineWidth = 5; ctx.strokeStyle = "#3a3f45"
-                            ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke()
-                            ctx.strokeStyle = "#4d9fff"
-                            ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+(Math.min(100,v)/100)*Math.PI*2); ctx.stroke()
-                            ctx.fillStyle = "#c8ccd2"; ctx.font = "bold 12px sans-serif"
-                            ctx.textAlign = "center"; ctx.textBaseline = "middle"
-                            ctx.fillText(Math.round(v)+"%", cx, cy-3)
-                            ctx.font = "7px sans-serif"; ctx.fillStyle = "#8a9199"
-                            ctx.fillText("GPU", cx, cy+10)
+                Repeater {
+                    model: [
+                        { key: "showGpu", label: "GPU", color: "#4d9fff",
+                          ratio: (root.gpu.util || 0) / 100,
+                          text: root.fmt(root.gpu.util, "%") },
+                        { key: "showMem", label: "MEM", color: "#e8c33a",
+                          ratio: (root.gpu.mem_used !== null && root.gpu.mem_total)
+                                 ? Math.min(1, root.gpu.mem_used / root.gpu.mem_total) : 0,
+                          text: (root.gpu.mem_used !== null && root.gpu.mem_total)
+                                ? root.fmt(root.gpu.mem_used * 100 / root.gpu.mem_total, "%") : "N/A" },
+                        { key: "showTemp", label: "TMP", color: "#b07fe8",
+                          ratio: Math.min(1, (root.gpu.temp || 0) / root.tempMax),
+                          text: root.fmt(root.gpu.temp, "°") },
+                        { key: "showPower", label: "PWR", color: "#3ddc84",
+                          ratio: Math.min(1, (root.gpu.power_w || 0) / (root.gpu.power_cap_w || 100)),
+                          text: root.fmt(root.gpu.power_w, "W") },
+                        { key: "showCpu", label: "CPU", color: "#ff8c42",
+                          ratio: (root.sys.cpu || 0) / 100,
+                          text: root.fmt(root.sys.cpu, "%") },
+                    ]
+                    delegate: Item {
+                        Layout.preferredWidth: 64; Layout.preferredHeight: 64
+                        Ring {
+                            anchors.fill: parent
+                            ratio: modelData.ratio
+                            ringColor: modelData.color
+                            valueText: modelData.text
+                            label: modelData.label
+                            active: root[modelData.key]
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root[modelData.key] = !root[modelData.key]
                         }
                     }
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.showGpu = !root.showGpu }
-                }
-                // MEM (yellow)
-                Item {
-                    Layout.preferredWidth: 64; Layout.preferredHeight: 64
-                    opacity: root.showMem ? 1 : 0.3
-                    Canvas {
-                        anchors.fill: parent
-                        onPaint: {
-                            var ctx = getContext("2d"); ctx.reset()
-                            var cx = width/2, cy = height/2, r = Math.min(cx,cy) - 4
-                            var v = (root.gpu.mem_used !== null && root.gpu.mem_total) ? root.gpu.mem_used*100/root.gpu.mem_total : 0
-                            ctx.lineWidth = 5; ctx.strokeStyle = "#3a3f45"
-                            ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke()
-                            ctx.strokeStyle = "#e8c33a"
-                            ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+(Math.min(100,v)/100)*Math.PI*2); ctx.stroke()
-                            ctx.fillStyle = "#c8ccd2"; ctx.font = "bold 12px sans-serif"
-                            ctx.textAlign = "center"; ctx.textBaseline = "middle"
-                            ctx.fillText(Math.round(v)+"%", cx, cy-3)
-                            ctx.font = "7px sans-serif"; ctx.fillStyle = "#8a9199"
-                            ctx.fillText("MEM", cx, cy+10)
-                        }
-                    }
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.showMem = !root.showMem }
-                }
-                // TMP (purple)
-                Item {
-                    Layout.preferredWidth: 64; Layout.preferredHeight: 64
-                    opacity: root.showTemp ? 1 : 0.3
-                    Canvas {
-                        anchors.fill: parent
-                        onPaint: {
-                            var ctx = getContext("2d"); ctx.reset()
-                            var cx = width/2, cy = height/2, r = Math.min(cx,cy) - 4
-                            var v = root.gpu.temp || 0
-                            var pct = Math.min(100, v * 100 / root.tempMax)
-                            ctx.lineWidth = 5; ctx.strokeStyle = "#3a3f45"
-                            ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke()
-                            ctx.strokeStyle = "#b07fe8"
-                            ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+(pct/100)*Math.PI*2); ctx.stroke()
-                            ctx.fillStyle = "#c8ccd2"; ctx.font = "bold 12px sans-serif"
-                            ctx.textAlign = "center"; ctx.textBaseline = "middle"
-                            ctx.fillText(Math.round(v)+"°", cx, cy-3)
-                            ctx.font = "7px sans-serif"; ctx.fillStyle = "#8a9199"
-                            ctx.fillText("TMP", cx, cy+10)
-                        }
-                    }
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.showTemp = !root.showTemp }
-                }
-                // PWR (green)
-                Item {
-                    Layout.preferredWidth: 64; Layout.preferredHeight: 64
-                    opacity: root.showPower ? 1 : 0.3
-                    Canvas {
-                        anchors.fill: parent
-                        onPaint: {
-                            var ctx = getContext("2d"); ctx.reset()
-                            var cx = width/2, cy = height/2, r = Math.min(cx,cy) - 4
-                            var cap = root.gpu.power_cap_w || 100
-                            var v = root.gpu.power_w || 0
-                            var pct = Math.min(100, v * 100 / cap)
-                            ctx.lineWidth = 5; ctx.strokeStyle = "#3a3f45"
-                            ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke()
-                            ctx.strokeStyle = "#3ddc84"
-                            ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+(pct/100)*Math.PI*2); ctx.stroke()
-                            ctx.fillStyle = "#c8ccd2"; ctx.font = "bold 12px sans-serif"
-                            ctx.textAlign = "center"; ctx.textBaseline = "middle"
-                            ctx.fillText(Math.round(v)+"W", cx, cy-3)
-                            ctx.font = "7px sans-serif"; ctx.fillStyle = "#8a9199"
-                            ctx.fillText("PWR", cx, cy+10)
-                        }
-                    }
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.showPower = !root.showPower }
-                }
-                // CPU (orange)
-                Item {
-                    Layout.preferredWidth: 64; Layout.preferredHeight: 64
-                    opacity: root.showCpu ? 1 : 0.3
-                    Canvas {
-                        anchors.fill: parent
-                        onPaint: {
-                            var ctx = getContext("2d"); ctx.reset()
-                            var cx = width/2, cy = height/2, r = Math.min(cx,cy) - 4
-                            var v = root.sys.cpu || 0
-                            ctx.lineWidth = 5; ctx.strokeStyle = "#3a3f45"
-                            ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke()
-                            ctx.strokeStyle = "#ff8c42"
-                            ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+(Math.min(100,v)/100)*Math.PI*2); ctx.stroke()
-                            ctx.fillStyle = "#c8ccd2"; ctx.font = "bold 12px sans-serif"
-                            ctx.textAlign = "center"; ctx.textBaseline = "middle"
-                            ctx.fillText(Math.round(v)+"%", cx, cy-3)
-                            ctx.font = "7px sans-serif"; ctx.fillStyle = "#8a9199"
-                            ctx.fillText("CPU", cx, cy+10)
-                        }
-                    }
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.showCpu = !root.showCpu }
                 }
             }
 
-            // stats line
-            Text {
+            // stats chips — wraps per-chip instead of mid-word, and never
+            // visually crowds the ring row above it
+            Flow {
                 Layout.fillWidth: true
-                text: "GPU " + (root.gpu.mem_used !== null && root.gpu.mem_total ? root.mb(root.gpu.mem_used) + "/" + root.mb(root.gpu.mem_total) : "N/A")
-                     + "  " + root.fmt(root.gpu.temp, "°C", 1)
-                     + "  " + root.fmt(root.gpu.power_w, "W", 1)
-                     + "   sys " + root.bytes(root.sys.ram_used) + "/" + root.bytes(root.sys.ram_total)
-                     + "  load " + root.sys.load1.toFixed(2)
-                color: "#8a9199"; font.pointSize: 8
-                wrapMode: Text.Wrap
+                Layout.topMargin: 2
+                spacing: 12
+
+                Text {
+                    text: "MEM " + (root.gpu.mem_used !== null && root.gpu.mem_total
+                          ? root.mb(root.gpu.mem_used) + "/" + root.mb(root.gpu.mem_total) : "N/A")
+                    color: "#8a9199"; font.pointSize: 8
+                }
+                Text {
+                    text: "TMP " + root.fmt(root.gpu.temp, "°C", 1)
+                    color: "#8a9199"; font.pointSize: 8
+                }
+                Text {
+                    text: "PWR " + root.fmt(root.gpu.power_w, "W", 1)
+                    color: "#8a9199"; font.pointSize: 8
+                }
+                Text {
+                    text: "sys " + root.bytes(root.sys.ram_used) + "/" + root.bytes(root.sys.ram_total)
+                    color: "#8a9199"; font.pointSize: 8
+                }
+                Text {
+                    text: "load " + root.sys.load1.toFixed(2)
+                    color: "#8a9199"; font.pointSize: 8
+                }
             }
 
             // graph section
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 120
+                Layout.preferredHeight: 96
                 color: "#101418"
                 radius: 3
                 Item {
@@ -425,71 +364,29 @@ PlasmoidItem {
             // llama.cpp — only show instances with a model loaded
             Repeater {
                 model: root.llama.filter(function(l) { return l.model !== null && l.model !== undefined && l.model !== "" })
-                delegate: Rectangle {
-                    Layout.fillWidth: true
-                    color: "#1a1f25"
-                    radius: 3
-                    height: llamaCol.implicitHeight + 16
-                    ColumnLayout {
-                        id: llamaCol
-                        anchors.fill: parent
-                        anchors.margins: 8
-                        spacing: 3
-                        Text {
-                            Layout.fillWidth: true
-                            text: "llama.cpp  pid " + modelData.pid
-                                 + (modelData.alias ? "  [" + modelData.alias + "]" : "")
-                                 + (modelData.port ? "  :port " + modelData.port : "")
-                                 + (modelData.model ? "  " + modelData.model.split("/").pop() : "")
-                            color: "#4d9fff"; font.bold: true; font.pointSize: 9
-                            wrapMode: Text.Wrap
-                        }
-                        Text {
-                            Layout.fillWidth: true
-                            text: "ngl: " + (modelData.ngl || "N/A")
-                                 + "   ctx: " + (modelData.ctx || "N/A")
-                                 + "   parallel: " + (modelData.parallel || "N/A")
-                                 + "   rss: " + (modelData.rss_kb ? (modelData.rss_kb / 1048576).toFixed(1) + " GiB" : "N/A")
-                                 + "   threads: " + (modelData.threads || "N/A")
-                            color: "#aeb4bb"; font.pointSize: 8
-                            wrapMode: Text.Wrap
-                        }
-                        Text {
-                            Layout.fillWidth: true
-                            text: modelData.cmdline
-                            color: "#6a7078"; font.pointSize: 7; font.family: "monospace"
-                            wrapMode: Text.Wrap
-                        }
-                    }
+                delegate: LlmCard {
+                    titleColor: "#4d9fff"
+                    title: "llama.cpp  pid " + modelData.pid
+                         + (modelData.alias ? "  [" + modelData.alias + "]" : "")
+                         + (modelData.port ? "  :port " + modelData.port : "")
+                         + (modelData.model ? "  " + modelData.model.split("/").pop() : "")
+                    subtitle: "ngl: " + (modelData.ngl || "N/A")
+                         + "   ctx: " + (modelData.ctx || "N/A")
+                         + "   parallel: " + (modelData.parallel || "N/A")
+                         + "   rss: " + (modelData.rss_kb ? (modelData.rss_kb / 1048576).toFixed(1) + " GiB" : "N/A")
+                         + "   threads: " + (modelData.threads || "N/A")
+                    cmdline: modelData.cmdline
                 }
             }
 
             // ollama — only show if there are loaded models
             Repeater {
                 model: root.ollamaModels.length > 0 ? root.ollama : []
-                delegate: Rectangle {
-                    Layout.fillWidth: true
-                    color: "#1a1f25"
-                    radius: 3
-                    height: ollamaCol.implicitHeight + 16
-                    ColumnLayout {
-                        id: ollamaCol
-                        anchors.fill: parent
-                        anchors.margins: 8
-                        spacing: 3
-                        Text {
-                            Layout.fillWidth: true
-                            text: "ollama  pid " + modelData.pid
-                                 + (modelData.subcmd ? "  " + modelData.subcmd : "")
-                            color: "#e8c33a"; font.bold: true; font.pointSize: 9
-                        }
-                        Text {
-                            Layout.fillWidth: true
-                            text: modelData.cmdline
-                            color: "#6a7078"; font.pointSize: 7; font.family: "monospace"
-                            wrapMode: Text.Wrap
-                        }
-                    }
+                delegate: LlmCard {
+                    titleColor: "#e8c33a"
+                    title: "ollama  pid " + modelData.pid
+                         + (modelData.subcmd ? "  " + modelData.subcmd : "")
+                    cmdline: modelData.cmdline
                 }
             }
 
@@ -509,29 +406,11 @@ PlasmoidItem {
             // vllm — only show instances with a model
             Repeater {
                 model: root.vllm.filter(function(v) { return v.model !== null && v.model !== undefined && v.model !== "" })
-                delegate: Rectangle {
-                    Layout.fillWidth: true
-                    color: "#1a1f25"
-                    radius: 3
-                    height: vllmCol.implicitHeight + 16
-                    ColumnLayout {
-                        id: vllmCol
-                        anchors.fill: parent
-                        anchors.margins: 8
-                        spacing: 3
-                        Text {
-                            Layout.fillWidth: true
-                            text: "vllm  pid " + modelData.pid
-                                 + (modelData.model ? "  " + modelData.model : "")
-                            color: "#b07fe8"; font.bold: true; font.pointSize: 9
-                        }
-                        Text {
-                            Layout.fillWidth: true
-                            text: modelData.cmdline
-                            color: "#6a7078"; font.pointSize: 7; font.family: "monospace"
-                            wrapMode: Text.Wrap
-                        }
-                    }
+                delegate: LlmCard {
+                    titleColor: "#b07fe8"
+                    title: "vllm  pid " + modelData.pid
+                         + (modelData.model ? "  " + modelData.model : "")
+                    cmdline: modelData.cmdline
                 }
             }
         }
