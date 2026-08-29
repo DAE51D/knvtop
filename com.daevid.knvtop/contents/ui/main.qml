@@ -337,10 +337,14 @@ PlasmoidItem {
                     }
                 }
 
-                // stats chips — wraps per-chip instead of mid-word, and never
-                // visually crowds the ring row above it. Centered (not
-                // fillWidth) to match the ring row's presentation.
-                Flow {
+                // stats chips, centered like the ring row above. Row, not
+                // Flow: Flow needs a width to decide when to wrap, and
+                // without one explicitly set (same trap as the ScrollView
+                // width issue above) it wrapped unpredictably even though
+                // these 3 short chips comfortably fit on one line. Row's
+                // implicitWidth is just the sum of its children, so it
+                // doesn't have that problem.
+                Row {
                     Layout.alignment: Qt.AlignHCenter
                     Layout.topMargin: 2
                     spacing: 12
@@ -361,6 +365,7 @@ PlasmoidItem {
                 }
 
                 // graph section
+
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 96
