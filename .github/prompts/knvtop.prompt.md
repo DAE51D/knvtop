@@ -396,6 +396,28 @@ the nvtop source. Full detail: session memory `knvtop-research.md`.
   one attempt landed on an unintended target and triggered Plasma's
   Overview effect instead of the plasmoid popup. Prefer asking the user to
   click and screenshot over repeated blind coordinate guesses.
+- **Plasma persists the popup's dialog size independent of QML — this can
+  make a `Layout.preferredWidth`/`Height` change look like it did nothing.**
+  Once a popup has been opened, Plasma writes the size it ended up at into
+  `~/.config/plasma-org.kde.plasma.desktop-appletsrc` under
+  `[Containments][N][Applets][ID][Configuration]` as `popupWidth=`/
+  `popupHeight=` (every applet on the panel has this — checked: digital
+  clock, binary clock, clipboard, system-monitor widgets all carry the same
+  keys). On every subsequent open, Plasma restores *that* stored size and
+  `Layout.preferredWidth/Height` on `fullRepresentation` is only consulted
+  when no stored value exists yet. Three separate width tweaks in a row
+  (640→660→520) all looked identical on screen because of this — none of
+  them were actually being applied. Fix: quit plasmashell first
+  (`kquitapp6 plasmashell`) to avoid a write race, back up the config file,
+  delete the `popupWidth=`/`popupHeight=` lines for this applet's
+  `[...][Configuration]` block (NOT the separate `[...][ConfigDialog]`
+  block below it, which is the *config dialog's* remembered size, unrelated
+  to the popup), then restart plasmashell. It re-derives from
+  `Layout.preferredWidth/Height` and writes a fresh `popupWidth`/
+  `popupHeight` back once the popup is opened again. This is editing an
+  *existing* applet's already-established config values, not adding a new
+  widget via scripting — different (and much lower-risk) from the
+  `addWidget`/`evaluateScript` re-instantiation flood warned about above.
 
 ## TODO
 
