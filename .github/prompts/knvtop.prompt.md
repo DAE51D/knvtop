@@ -237,6 +237,90 @@ the nvtop source. Full detail: session memory `knvtop-research.md`.
   `WantedBy=default.target`. The script needs `chmod +x` or systemd
   returns `203/EXEC`.
 
+## Implementation learnings (2026-08-28)
+
+### QML Canvas in plasmoids
+
+- **Separate `Sparkline.qml` component works; inline Canvas in `main.qml` does not.**
+  The key pattern (from `corestrip`): a standalone `Canvas`-rooted QML file with a
+  `revision: int` property. The parent sets `revision: root.revision` (an int that
+  increments each poll tick). The Sparkline has `onRevisionChanged: requestPaint()`.
+  This forces a repaint every tick without the parent needing to call `requestPaint()`
+  on a cross-scope id.
+- **Cross-scope id references fail in nested Repeater delegates.** E.g.
+  `barArea.spark.val()` inside a Repeater delegate that is inside a different
+  `Item` scope will not resolve. Use root-level helper functions (`root.fmt(v)`,
+  `root.mb(v)`) instead of reaching into sibling ids.
+- **`font.strikeOut` is NOT a valid QML property.** Use `opacity` to dim disabled
+  legend items. Assigning `font.strikeOut` causes a QML load error.
+- **`Repeater` inside `ShapePath` fails:** "Cannot assign object of type
+  QQuickRepeater to list property pathElements". `QtQuick.Shapes` is available in
+  plasmoids but Repeater-generated `PathLine` elements don't work. Use `Canvas`
+  for any multi-point polyline.
+- **`Label` is NOT available in all QML contexts in plasmoids.** In
+  `ToolTipView.qml` (a standalone Item, not a direct child of PlasmoidItem),
+  `Label` fails with "Label is not a type" even with
+  `import org.kde.plasma.plasmoid`. Use QtQuick's `Text` instead. In
+  `main.qml` (the PlasmoidItem root), `Label` works fine because the
+  `org.kde.plasma.plasmoid` import is in scope at the top level.
+
+### Plasmoid expand/click behavior
+
+- **`root.expanded` is the correct property to toggle, NOT `Plasmoid.expanded`.**
+  `expanded` is a property on `PlasmoidItem` itself. Corestrip uses
+  `root.expanded = !root.expanded` where `root` is the PlasmoidItem.
+  `Plasmoid.expanded` does not exist as an accessible property.
+- **`MouseArea` Z-order matters critically.** In QML, later-declared children
+  are on top. If you declare a `MouseArea` *before* 5 `Sparkline` Canvas items,
+  the Canvases are on top and eat all mouse events — the MouseArea never
+  receives clicks. The `MouseArea` must be declared *after* (below in the file)
+  all the visual children it needs to cover.
+- **`toolTipItem` replaces `toolTipMainText`/`toolTipSubText`.** For a rich
+  hover UI (bars, colors, multi-line), use `toolTipItem: ToolTipView { ... }`.
+  The plain text properties only render monochrome text.
+- **Plasmoids do NOT hot-reload QML.** After `cp -r` to the install dir, you
+  must either logout/login or `kquitapp6 plasmashell && kstart6 plasmashell`.
+  Removing and re-adding the widget from the panel also works.
+
+### Panel sizing
+
+- **Use `Layout.fillWidth`/`Layout.fillHeight` + `Layout.minimumWidth/Height`
+  and `Layout.preferredWidth/Height`.** Hardcoded `width`/`height` on the
+  compactRepresentation Item conflict with the panel's layout system. The
+  `inPanel` check switches between panel (160×50 min, 220×70 pref) and desktop
+  (280×120 min, 360×160 pref) sizes.
+
+### D-Bus service (dbus-python)
+
+- **`Get()` returns a JSON string (`out_signature="s"`), not a dict.** QML
+  parses with `JSON.parse(reply.values[0])`. Returning a `dbus.Dictionary`
+  directly causes type-mismatch errors on the QML side.
+- **The systemd user unit must `chmod +x` the script** or systemd returns
+  `203/EXEC`. `ExecStart=%h/Code/knvtop/service/knvtop_service.py`.
+
+### Drkonqi crash loop
+
+- **`drkonqi-coredump-launcher` can crash-loop** (generating coredumps that
+  trigger more launches). Mask via:
+  `sudo ln -sf /dev/null /etc/systemd/user/drkonqi-coredump-{launcher.socket,pickup.service,cleanup.service,cleanup.timer}`
+  Then `systemctl --user daemon-reload`.
+
+### Power scaling
+
+- **`power1_cap` is not populated on Strix Halo APU.** The power% line uses
+  `gpu.power_cap_w || 100` (100 W default) as the denominator so the line
+  renders even when the cap is null.
+
+### Cosmetic issues (known, not yet fixed)
+
+- Full view: ring gauges overlap the stats text to their right.
+- Full view: graph area is too tall relative to the LLM cards below.
+- Full view: LLM card text (cmdline) is truncated — needs word-wrap or
+  horizontal scroll.
+- Compact view: legend text is very small (6pt) — could be 7-8pt.
+- Tooltip: "Click for details" hint is useful but the click target (graph area
+  only) is not obvious.
+
 ## TODO
 
 - [x] Phase 1: plasmoid scaffold (`metadata.json` + `main.qml`), verify loads
@@ -244,9 +328,11 @@ the nvtop source. Full detail: session memory `knvtop-research.md`.
 - [x] Phase 3: `Canvas` 5-line graph (GPU util/mem/temp/power + CPU) + `fullRepresentation` hover/click panel
 - [x] Phase 3: graceful N/A handling (power cap / ollama / no LLM procs)
 - [x] systemd user unit (`knvtop.service`) for the D-Bus service
+- [x] Phase 3: custom `ToolTipView.qml` with colored bars (GPU/MEM/PWR/CPU/RAM)
+- [x] Phase 3: click-to-expand via `root.expanded` + topmost `MouseArea`
+- [ ] Phase 3: cosmetic cleanup (ring gauge overlap, graph height, card text wrap)
 - [ ] Phase 4: README + prompt-file sync; optional `config/main.xml`
 - [ ] Milestone commits 1–4 pushed to `main` (Gitea `DAE51D/knvtop`)
-- [ ] User adds widget via right-click → Add Widgets, verify lines render
 
 ## Verification
 
