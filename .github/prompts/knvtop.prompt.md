@@ -478,9 +478,31 @@ the nvtop source. Full detail: session memory `knvtop-research.md`.
   so it reads correctly in both Plasma light and dark color schemes — the
   graph/cards/compact widget stay permanently dark by design (nvtop-style
   terminal panels), only this area follows the system theme.
-- [ ] Phase 4: README.md is currently empty — still needs writing (install,
-  data sources, the nvtop-MEM-divergence note); prompt-file is kept in
-  sync as-we-go already.
+- [x] Phase 4: README.md written (install, data sources, the nvtop-MEM-
+  divergence note, and the cross-user GPU-stats/CAP_SYS_PTRACE setup step).
+- [x] Generic nvtop-style GPU process scan (2026-08-29): `gpu_proc_sample()`
+  walks `/proc/*/fdinfo` for DRM client fds (Graphic/Compute classification
+  from which `drm-engine-*` keys are present, GPU% as a delta of the
+  cumulative ns counters). Config page: real "AI/LLM processes only"
+  checkbox (default true) + User/Type filters, all wired to
+  `Plasmoid.configuration` and applied via `filteredGpuProcs`.
+- [x] Per-process live stats row on every LLM card (GPU%/GPU MEM/CPU%/Host
+  MEM), sharing the same `_fdinfo_gpu_stats()` helper as the generic scan
+  plus a new `_proc_cpu_pct()` (delta of `/proc/<pid>/stat` utime+stime,
+  same pattern as `_cpu_sample()`).
+- [x] Cross-user GPU visibility: `/proc/<pid>/fdinfo` is same-uid-or-root
+  only, so a process owned by a different account (this box's actual
+  llama.cpp, which runs as `aistack`, not this service's `dae51d`) read
+  GPU%/VRAM as N/A. Fixed by granting `cap_sys_ptrace` to a **dedicated
+  copy** of python3 (`/usr/local/lib/knvtop/python3-ptrace`), not the
+  shared system binary — capabilities live on the file's inode, so
+  setcap'ing the real `/usr/bin/python3.14` would've handed
+  `cap_sys_ptrace` to every Python script anyone runs on the machine.
+  `knvtop.service`'s `ExecStart` auto-detects the dedicated copy and falls
+  back to plain `python3` if it isn't set up (README documents the setup
+  step for other users). Verified: the router process (port 8082, a pure
+  HTTP proxy with no GPU context of its own) correctly still shows N/A;
+  the actual inference process now reports real VRAM/GPU%.
 - [x] Milestone commits pushed to `main` (Gitea `DAE51D/knvtop`)
 
 ## Verification
