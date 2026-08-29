@@ -340,14 +340,6 @@ PlasmoidItem {
                         color: "#8a9199"; font.pointSize: 8
                     }
                     Text {
-                        text: "TMP " + root.fmt(root.gpu.temp, "°C", 1)
-                        color: "#8a9199"; font.pointSize: 8
-                    }
-                    Text {
-                        text: "PWR " + root.fmt(root.gpu.power_w, "W", 1)
-                        color: "#8a9199"; font.pointSize: 8
-                    }
-                    Text {
                         text: "sys " + root.bytes(root.sys.ram_used) + "/" + root.bytes(root.sys.ram_total)
                         color: "#8a9199"; font.pointSize: 8
                     }
@@ -379,15 +371,17 @@ PlasmoidItem {
                     model: root.llama.filter(function(l) { return l.model !== null && l.model !== undefined && l.model !== "" })
                     delegate: LlmCard {
                         titleColor: "#4d9fff"
-                        title: "llama.cpp  pid " + modelData.pid
+                        // pid/port/model filename are already in the gray cmdline
+                        // text below, so they're dropped from the bold title;
+                        // pid moves to the subtitle instead, de-emphasized
+                        title: "llama.cpp"
                              + (modelData.alias ? "  [" + modelData.alias + "]" : "")
-                             + (modelData.port ? "  :port " + modelData.port : "")
-                             + (modelData.model ? "  " + modelData.model.split("/").pop() : "")
                         subtitle: "ngl: " + (modelData.ngl || "N/A")
                              + "   ctx: " + (modelData.ctx || "N/A")
                              + "   parallel: " + (modelData.parallel || "N/A")
                              + "   rss: " + (modelData.rss_kb ? (modelData.rss_kb / 1048576).toFixed(1) + " GiB" : "N/A")
                              + "   threads: " + (modelData.threads || "N/A")
+                             + "   pid: " + modelData.pid
                         cmdline: modelData.cmdline
                     }
                 }
@@ -397,8 +391,8 @@ PlasmoidItem {
                     model: root.ollamaModels.length > 0 ? root.ollama : []
                     delegate: LlmCard {
                         titleColor: "#e8c33a"
-                        title: "ollama  pid " + modelData.pid
-                             + (modelData.subcmd ? "  " + modelData.subcmd : "")
+                        title: "ollama" + (modelData.subcmd ? "  " + modelData.subcmd : "")
+                        subtitle: "pid: " + modelData.pid
                         cmdline: modelData.cmdline
                     }
                 }
@@ -410,7 +404,7 @@ PlasmoidItem {
                     model: root.ollamaModels
                     delegate: LlmCard {
                         titleColor: "#e8c33a"
-                        title: "ollama model  " + modelData.name
+                        title: "ollama  [" + modelData.name + "]"
                         subtitle: "params: " + (modelData.parameter_size || "N/A")
                              + "   quant: " + (modelData.quantization || "N/A")
                              + "   vram: " + (modelData.size_vram ? (modelData.size_vram / 1073741824).toFixed(1) + " GiB" : "N/A")
@@ -422,8 +416,11 @@ PlasmoidItem {
                     model: root.vllm.filter(function(v) { return v.model !== null && v.model !== undefined && v.model !== "" })
                     delegate: LlmCard {
                         titleColor: "#b07fe8"
-                        title: "vllm  pid " + modelData.pid
-                             + (modelData.model ? "  " + modelData.model : "")
+                        // vllm has no alias field, so (unlike llama.cpp) the
+                        // model name is the only identifier available for the
+                        // title — keep it, bracketed to match the alias style
+                        title: "vllm" + (modelData.model ? "  [" + modelData.model + "]" : "")
+                        subtitle: "pid: " + modelData.pid
                         cmdline: modelData.cmdline
                     }
                 }
