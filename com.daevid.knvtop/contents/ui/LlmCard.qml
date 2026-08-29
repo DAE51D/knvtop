@@ -11,6 +11,32 @@ Rectangle {
     property color titleColor: "#4d9fff"
     property string subtitle: ""
     property string cmdline: ""
+    // Raw argv (not the flattened cmdline string) so each flag can be
+    // paired with its own value unambiguously -- a value containing spaces
+    // (e.g. a JSON flag argument) is one argv element but can't be
+    // re-split correctly out of a joined string. argv[0] (the binary path)
+    // is skipped.
+    property var argv: []
+
+    // A token starting with "-" that isn't a bare negative number (e.g.
+    // "-0.5") is a flag name; the next token is its value unless that next
+    // token is itself a flag, in which case this one is a boolean switch.
+    readonly property var flags: {
+        var out = []
+        for (var i = 1; i < argv.length; i++) {
+            var tok = argv[i]
+            if (!/^-(?!\d)/.test(tok)) continue
+            var key = tok.replace(/^-+/, "")
+            var value = ""
+            if (i + 1 < argv.length && !/^-(?!\d)/.test(argv[i + 1])) {
+                value = argv[i + 1]
+                i++
+            }
+            out.push({ key: key, value: value })
+        }
+        out.sort(function(a, b) { return a.key.localeCompare(b.key) })
+        return out
+    }
 
     Layout.fillWidth: true
     color: "#1a1f25"
@@ -43,9 +69,38 @@ Rectangle {
             font.pointSize: 8
             wrapMode: Text.Wrap
         }
+        // CLI flags as a wrapping key/value table, sorted alphabetically --
+        // only shown when argv was supplied (llama.cpp/vllm); falls back to
+        // the raw cmdline text otherwise (e.g. the trivial "ollama serve").
+        Flow {
+            Layout.fillWidth: true
+            Layout.topMargin: 2
+            visible: card.argv.length > 0
+            spacing: 10
+
+            Repeater {
+                model: card.flags
+                delegate: Row {
+                    spacing: 4
+                    Text {
+                        text: modelData.key + ":"
+                        color: "#8a9199"
+                        font.pointSize: 7
+                        font.family: "monospace"
+                    }
+                    Text {
+                        text: modelData.value.length > 0 ? modelData.value : "on"
+                        color: "#c8ccd2"
+                        font.pointSize: 7
+                        font.family: "monospace"
+                    }
+                }
+            }
+        }
+
         Text {
             Layout.fillWidth: true
-            visible: card.cmdline.length > 0
+            visible: card.cmdline.length > 0 && card.argv.length === 0
             text: card.cmdline
             color: "#6a7078"
             font.pointSize: 7

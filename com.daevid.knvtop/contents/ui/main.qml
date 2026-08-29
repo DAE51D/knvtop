@@ -302,24 +302,32 @@ PlasmoidItem {
                 width: scrollView.availableWidth
                 spacing: 8
 
-                // pin (keep popup open) + configure, top-right, same pattern
-                // as e.g. org.kde.desktopcontainment's FolderViewLayer.qml
+                // title top-left; configure + pin top-right (pin rightmost),
+                // same button pattern as e.g. org.kde.desktopcontainment's
+                // FolderViewLayer.qml
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 2
 
+                    Text {
+                        text: "knvtop"
+                        color: Kirigami.Theme.textColor
+                        font.bold: true
+                        font.pointSize: 10
+                    }
+
                     Item { Layout.fillWidth: true }
 
+                    PlasmaComponents.ToolButton {
+                        icon.name: "configure"
+                        onClicked: Plasmoid.internalAction("configure").trigger()
+                        PlasmaComponents.ToolTip { text: "Configure…" }
+                    }
                     PlasmaComponents.ToolButton {
                         checkable: true
                         icon.name: "window-pin"
                         onCheckedChanged: root.hideOnWindowDeactivate = !checked
                         PlasmaComponents.ToolTip { text: "Keep open" }
-                    }
-                    PlasmaComponents.ToolButton {
-                        icon.name: "configure"
-                        onClicked: Plasmoid.internalAction("configure").trigger()
-                        PlasmaComponents.ToolTip { text: "Configure…" }
                     }
                 }
 
@@ -432,7 +440,7 @@ PlasmoidItem {
                              + "   rss: " + (modelData.rss_kb ? (modelData.rss_kb / 1048576).toFixed(1) + " GiB" : "N/A")
                              + "   threads: " + (modelData.threads || "N/A")
                              + "   pid: " + modelData.pid
-                        cmdline: modelData.cmdline
+                        argv: modelData.argv || []
                     }
                 }
 
@@ -471,7 +479,7 @@ PlasmoidItem {
                         // title — keep it, bracketed to match the alias style
                         title: "vllm" + (modelData.model ? "  [" + modelData.model + "]" : "")
                         subtitle: "pid: " + modelData.pid
-                        cmdline: modelData.cmdline
+                        argv: modelData.argv || []
                     }
                 }
             }

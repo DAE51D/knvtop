@@ -255,10 +255,17 @@ def llm_sample():
         if exe.startswith("llama") and _is_ollama_owned(argv):
             continue
         st = _proc_status(pid, {"Name", "VmRSS", "Threads"})
+        clean_argv = [a for a in argv if a]
         entry = {
             "pid": int(pid),
             "name": st.get("Name", os.path.basename(argv[0])),
-            "cmdline": " ".join(a for a in argv if a),
+            "cmdline": " ".join(clean_argv),
+            # Full argv (not just the flattened cmdline string) so the UI can
+            # pair each flag with its own value unambiguously -- a value
+            # containing spaces (e.g. a JSON flag argument) is one argv
+            # element but would be impossible to re-split correctly out of
+            # the joined "cmdline" string alone.
+            "argv": clean_argv,
             "rss_kb": int(st["VmRSS"].split()[0])
             if "VmRSS" in st and st["VmRSS"].split()
             else None,
