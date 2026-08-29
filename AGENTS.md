@@ -15,3 +15,10 @@ Project-specific:
   then let the user add it via right-click → Add Widgets.
 - `plasma-org.kde.plasma.desktop-appletsrc` is under etckeeper-style git
   backup via `~` — if you must edit it, commit the change deliberately.
+- **Bump `com.daevid.knvtop/metadata.json`'s `KPlugin.Version`** with any
+  commit that ships a real feature or fix (not pure docs/comment-only
+  changes). This is the version Plasma shows in the "Add Widgets" browser
+  and the widget's own info popup when installing/updating — it's the
+  only version indicator, on purpose (no in-UI version string). Pre-1.0:
+  bump the minor digit for new features (0.1.0 → 0.2.0), the patch digit
+  for a fix-only pass.

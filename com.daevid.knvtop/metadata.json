@@ -3,9 +3,9 @@
     "KPlugin": {
         "Id": "com.daevid.knvtop",
         "Name": "knvtop",
-        "Description": "GPU + LLM inference monitor (nvtop-style 4-line graph with hover detail panel)",
+        "Description": "GPU + LLM inference monitor (nvtop-style graph, per-process cards, filterable by user/type)",
         "Icon": "video-display",
-        "Version": "0.1.0",
+        "Version": "0.2.0",
         "Authors": [
             {
                 "Name": "Daevid Vincent",
