@@ -12,6 +12,9 @@ KCM.SimpleKCM {
     property alias cfg_showTemp: tempBox.checked
     property alias cfg_showPower: powerBox.checked
     property alias cfg_showCpu: cpuBox.checked
+    property alias cfg_llmOnly: llmOnlyBox.checked
+    property string cfg_filterUser
+    property string cfg_filterType
 
     Kirigami.FormLayout {
         anchors.fill: parent
@@ -36,6 +39,43 @@ KCM.SimpleKCM {
         QQC2.CheckBox {
             id: cpuBox
             text: "CPU utilization"
+        }
+
+        Item {
+            Kirigami.FormData.isSection: false
+            implicitHeight: Kirigami.Units.smallSpacing
+        }
+
+        QQC2.CheckBox {
+            id: llmOnlyBox
+            Kirigami.FormData.label: "Process list:"
+            text: "AI/LLM processes only"
+        }
+
+        QQC2.ComboBox {
+            id: userBox
+            Kirigami.FormData.label: "Filter by user:"
+            enabled: !llmOnlyBox.checked
+            editable: true
+            model: ["All Users"]
+            currentIndex: 0
+            editText: page.cfg_filterUser
+            onEditTextChanged: page.cfg_filterUser = editText
+        }
+
+        QQC2.ComboBox {
+            id: typeBox
+            Kirigami.FormData.label: "Filter by type:"
+            enabled: !llmOnlyBox.checked
+            textRole: "label"
+            valueRole: "key"
+            model: [
+                { key: "both", label: "Both" },
+                { key: "graphic", label: "Graphic" },
+                { key: "compute", label: "Compute" }
+            ]
+            currentIndex: Math.max(0, indexOfValue(page.cfg_filterType))
+            onActivated: page.cfg_filterType = currentValue
         }
     }
 }

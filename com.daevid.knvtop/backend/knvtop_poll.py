@@ -8,7 +8,8 @@ Emits one JSON object per line on stdout, once per second:
               "temp": float|None, "power_w": float|None, "power_cap_w": float|None},
       "sys": {"ram_used": int, "ram_total": int, "swap_used": int,
               "swap_total": int, "load1": float, "load5": float, "load15": float},
-      "llm": {"llama": [ {...}, ... ], "ollama": [ {...}, ... ], "vllm": [ {...} ]}
+      "llm": {"llama": [ {...}, ... ], "ollama": [ {...}, ... ], "vllm": [ {...} ]},
+      "gpu_procs": [ {pid, user, name, cmdline, argv, type: [...], gpu_pct, vram_kb}, ... ]
     }
 
 GPU source: `amd-smi metric --json` (one-shot). On failure, fall back to
@@ -19,6 +20,7 @@ Missing values are null (QML renders N/A).
 
 import json
 import os
+import pwd
 import subprocess
 import sys
 import time
@@ -270,7 +272,11 @@ def llm_sample():
             if "VmRSS" in st and st["VmRSS"].split()
             else None,
             "threads": int(st["Threads"]) if st.get("Threads", "").isdigit() else None,
+            "cpu_pct": _proc_cpu_pct(pid),
         }
+        gpu_stats = _fdinfo_gpu_stats(pid)
+        entry["gpu_pct"] = gpu_stats["gpu_pct"] if gpu_stats else None
+        entry["vram_kb"] = gpu_stats["vram_kb"] if gpu_stats else None
         if exe.startswith("llama"):
             entry["model"] = _find("--model", argv)
             entry["ngl"] = _find("--n-gpu-layers", argv)
@@ -317,17 +323,208 @@ def ollama_ps():
         return None
 
 
+_prev_gpu_engines = {}  # pid -> {"time": monotonic, "engines": {name: ns}}
+
+
+def _fdinfo_engines(pid):
+    """Aggregate DRM fdinfo (drm-engine-*/drm-memory-*) across all of this
+    pid's open DRM client fds, or None if it has none (not a GPU client).
+
+    /proc/<pid>/fdinfo/* is only readable by that pid's own owner (or root)
+    -- unlike /proc/<pid>/cmdline, which is world-readable. Since this
+    poller runs as an unprivileged user, GPU-using processes owned by a
+    *different* user (e.g. a service running under its own system account)
+    are invisible to this generic scan and silently skipped, even though
+    the same process would still show up in llm_sample() above (which only
+    needs the world-readable cmdline). This is a real limitation, not a
+    bug -- there's no way around it without running privileged."""
+    fd_dir = f"/proc/{pid}/fdinfo"
+    try:
+        fds = os.listdir(fd_dir)
+    except OSError:
+        return None
+    engines, mem, found = {}, {}, False
+    for fd in fds:
+        try:
+            with open(f"{fd_dir}/{fd}") as f:
+                content = f.read()
+        except OSError:
+            continue
+        if "drm-driver" not in content:
+            continue
+        found = True
+        for line in content.splitlines():
+            if ":" not in line:
+                continue
+            k, _, v = line.partition(":")
+            k, v = k.strip(), v.strip().split()
+            if not v:
+                continue
+            if k.startswith("drm-engine-"):
+                try:
+                    engines[k[len("drm-engine-"):]] = engines.get(
+                        k[len("drm-engine-"):], 0) + int(v[0])
+                except ValueError:
+                    pass
+            elif k.startswith("drm-memory-"):
+                try:
+                    mem[k[len("drm-memory-"):]] = mem.get(
+                        k[len("drm-memory-"):], 0) + int(v[0])
+                except ValueError:
+                    pass
+    return {"engines": engines, "mem": mem} if found else None
+
+
+def _gpu_engine_pct(pid, engines):
+    """% busy per engine since the last sample (nvtop's own approach:
+    delta of the cumulative ns counter / elapsed wall time). None on a
+    process's first-ever sample (no baseline yet), matching _cpu_sample()."""
+    now = time.monotonic()
+    prev = _prev_gpu_engines.get(pid)
+    _prev_gpu_engines[pid] = {"time": now, "engines": dict(engines)}
+    if prev is None:
+        return None
+    dt = now - prev["time"]
+    if dt <= 0:
+        return None
+    pct = {}
+    for name, ns in engines.items():
+        d_ns = max(0, ns - prev["engines"].get(name, ns))
+        pct[name] = round(min(100.0, d_ns / (dt * 1e9) * 100.0), 1)
+    return pct
+
+
+def _username(pid):
+    try:
+        with open(f"/proc/{pid}/status") as f:
+            for line in f:
+                if line.startswith("Uid:"):
+                    return pwd.getpwuid(int(line.split()[1])).pw_name
+    except (OSError, ValueError, KeyError):
+        pass
+    return None
+
+
+def _fdinfo_gpu_stats(pid):
+    """{'gpu_pct': float|None, 'vram_kb': int|None, 'types': [...]} for one
+    pid, or None if it has no open DRM client fd (not a GPU client).
+    Shared by gpu_proc_sample() (every GPU process) and llm_sample() (so
+    llama.cpp/ollama/vllm cards can show their own live GPU load/memory,
+    not just the system-wide totals)."""
+    fdinfo = _fdinfo_engines(pid)
+    if fdinfo is None or not fdinfo["engines"]:
+        return None
+    pct = _gpu_engine_pct(int(pid), fdinfo["engines"]) or {}
+    types = []
+    if "gfx" in fdinfo["engines"]:
+        types.append("graphic")
+    if "compute" in fdinfo["engines"]:
+        types.append("compute")
+    if not types:
+        types.append("other")  # decode/encode-only (e.g. video playback)
+    return {
+        "gpu_pct": round(sum(pct.values()), 1) if pct else None,
+        "vram_kb": sum(fdinfo["mem"].values()) or None,
+        "types": types,
+    }
+
+
+_prev_proc_cpu = {}  # pid -> {"time": monotonic, "ticks": utime+stime}
+
+
+def _proc_cpu_pct(pid):
+    """Per-process CPU%, same delta-of-a-cumulative-counter approach as
+    _cpu_sample()/_gpu_engine_pct() -- None on a process's first sample."""
+    try:
+        with open(f"/proc/{pid}/stat") as f:
+            content = f.read()
+    except OSError:
+        return None
+    # comm (field 2) is parenthesized and can itself contain spaces/parens,
+    # so split after the LAST ')' rather than just splitting on whitespace.
+    rest = content.rsplit(")", 1)[-1].split()
+    try:
+        ticks = int(rest[11]) + int(rest[12])  # utime + stime
+    except (IndexError, ValueError):
+        return None
+    now = time.monotonic()
+    key = int(pid)
+    prev = _prev_proc_cpu.get(key)
+    _prev_proc_cpu[key] = {"time": now, "ticks": ticks}
+    if prev is None:
+        return None
+    dt = now - prev["time"]
+    if dt <= 0:
+        return None
+    hz = os.sysconf("SC_CLK_TCK")
+    d_ticks = max(0, ticks - prev["ticks"])
+    # Multi-threaded processes can exceed 100% (e.g. 2 full cores = 200%),
+    # same convention as `top`/`ps` -- just sanity-clamp to the core count.
+    return round(min(100.0 * os.cpu_count(), d_ticks / hz / dt * 100.0), 1)
+
+
+def gpu_proc_sample():
+    """Every process with an open DRM client fd on the GPU -- the generic,
+    nvtop-style process list (as opposed to llm_sample()'s LLM-only view).
+    See _fdinfo_engines() for the same-user visibility caveat."""
+    procs = []
+    try:
+        pids = [p for p in os.listdir("/proc") if p.isdigit()]
+    except OSError:
+        pids = []
+    alive = set()
+    for pid_s in pids:
+        stats = _fdinfo_gpu_stats(pid_s)
+        if stats is None:
+            continue
+        argv = [a for a in (_proc_cmdline(pid_s) or []) if a]
+        if not argv:
+            continue
+        alive.add(int(pid_s))
+        # Name from /proc/status, not argv[0] -- some processes (observed:
+        # Chromium/Electron GPU helpers) rewrite their own argv into one
+        # long descriptive blob for `ps` display, which makes a poor "name".
+        st = _proc_status(pid_s, {"Name", "VmRSS"})
+        name = st.get("Name") or os.path.basename(argv[0])
+        procs.append({
+            "pid": int(pid_s),
+            "user": _username(pid_s) or "?",
+            "name": name,
+            "cmdline": " ".join(argv),
+            "argv": argv,
+            "type": stats["types"],
+            "gpu_pct": stats["gpu_pct"],
+            "vram_kb": stats["vram_kb"],
+            "cpu_pct": _proc_cpu_pct(pid_s),
+            "rss_kb": int(st["VmRSS"].split()[0])
+            if "VmRSS" in st and st["VmRSS"].split()
+            else None,
+        })
+    # Drop tracking state for pids that no longer exist so this dict
+    # doesn't grow without bound across a long-running poller session.
+    for tracked in list(_prev_gpu_engines.keys()):
+        if tracked not in alive:
+            del _prev_gpu_engines[tracked]
+    return procs
+
+
 def main():
     while True:
         try:
             llm = llm_sample()
             llm["ollama_models"] = ollama_ps() or []
-            sample = {"gpu": gpu_sample(), "sys": sys_sample(), "llm": llm}
+            sample = {
+                "gpu": gpu_sample(),
+                "sys": sys_sample(),
+                "llm": llm,
+                "gpu_procs": gpu_proc_sample(),
+            }
         except Exception:
             sample = {
                 "gpu": {},
                 "sys": {},
                 "llm": {"llama": [], "ollama": [], "vllm": [], "ollama_models": []},
+                "gpu_procs": [],
             }
         try:
             sys.stdout.write(json.dumps(sample) + "\n")

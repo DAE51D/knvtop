@@ -24,5 +24,19 @@
         <entry name="showCpu" type="Bool">
             <default>true</default>
         </entry>
+
+        <!-- Process list filters. llmOnly true = today's default behavior
+             (only recognized llama.cpp/ollama/vllm entries). false shows
+             every GPU process nvtop-style, filtered by user/type. -->
+        <entry name="llmOnly" type="Bool">
+            <default>true</default>
+        </entry>
+        <entry name="filterUser" type="String">
+            <default>All Users</default>
+        </entry>
+        <entry name="filterType" type="String">
+            <!-- one of: both, graphic, compute -->
+            <default>both</default>
+        </entry>
     </group>
 </kcfg>

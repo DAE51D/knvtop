@@ -11,6 +11,19 @@ Rectangle {
     property color titleColor: "#4d9fff"
     property string subtitle: ""
     property string cmdline: ""
+    // Live per-process stats row, shown between the title and subtitle
+    // when any of them is available (all null → row hidden). null renders
+    // as N/A -- e.g. GPU%/VRAM read /proc/<pid>/fdinfo, which the kernel
+    // restricts to same-uid-or-root, so a process owned by a different
+    // user than this poller (a real, current case: llama.cpp running
+    // under its own service account) always shows N/A for those two.
+    property var gpuPct: null
+    property var vramKb: null
+    property var cpuPct: null
+    property var hostMemKb: null
+
+    function fmtPct(v) { return (v === null || v === undefined) ? "N/A" : v.toFixed(0) + "%" }
+    function fmtMiB(kb) { return (kb === null || kb === undefined) ? "N/A" : (kb / 1024).toFixed(0) + " MiB" }
     // Raw argv (not the flattened cmdline string) so each flag can be
     // paired with its own value unambiguously -- a value containing spaces
     // (e.g. a JSON flag argument) is one argv element but can't be
@@ -63,6 +76,18 @@ Rectangle {
         }
         Text {
             Layout.fillWidth: true
+            visible: card.gpuPct !== null || card.vramKb !== null
+                  || card.cpuPct !== null || card.hostMemKb !== null
+            text: "GPU: " + card.fmtPct(card.gpuPct)
+                + "   GPU MEM: " + card.fmtMiB(card.vramKb)
+                + "   CPU: " + card.fmtPct(card.cpuPct)
+                + "   Host MEM: " + card.fmtMiB(card.hostMemKb)
+            color: "#aeb4bb"
+            font.pointSize: 8
+            wrapMode: Text.Wrap
+        }
+        Text {
+            Layout.fillWidth: true
             visible: card.subtitle.length > 0
             text: card.subtitle
             color: "#aeb4bb"
@@ -76,7 +101,7 @@ Rectangle {
             Layout.fillWidth: true
             Layout.topMargin: 2
             visible: card.argv.length > 0
-            spacing: 10
+            spacing: 5
 
             Repeater {
                 model: card.flags
