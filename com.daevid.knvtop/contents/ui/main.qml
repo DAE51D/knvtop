@@ -56,6 +56,11 @@ PlasmoidItem {
         return (v / 1024).toFixed(1) + " GiB";
     }
 
+    function bytes(v) {
+        if (v === null || v === undefined) return "N/A";
+        return (v / 1073741824).toFixed(1) + " GiB";
+    }
+
     function pctNorm(v, floor, max) {
         if (v === null || v === undefined) return 0;
         var p = (v - floor) * 100 / (max - floor);
@@ -389,14 +394,15 @@ PlasmoidItem {
             }
 
             // stats line
-            Label {
+            Text {
                 Layout.fillWidth: true
                 text: "GPU " + (root.gpu.mem_used !== null && root.gpu.mem_total ? root.mb(root.gpu.mem_used) + "/" + root.mb(root.gpu.mem_total) : "N/A")
                      + "  " + root.fmt(root.gpu.temp, "°C", 1)
                      + "  " + root.fmt(root.gpu.power_w, "W", 1)
-                     + "   sys " + root.mb(root.sys.ram_used) + "/" + root.mb(root.sys.ram_total)
+                     + "   sys " + root.bytes(root.sys.ram_used) + "/" + root.bytes(root.sys.ram_total)
                      + "  load " + root.sys.load1.toFixed(2)
                 color: "#8a9199"; font.pointSize: 8
+                wrapMode: Text.Wrap
             }
 
             // graph section
@@ -423,34 +429,34 @@ PlasmoidItem {
                     Layout.fillWidth: true
                     color: "#1a1f25"
                     radius: 3
-                    ColumnLayout {
+                    Column {
                         anchors.fill: parent
                         anchors.margins: 8
                         spacing: 3
-                        Label {
-                            Layout.fillWidth: true
+                        Text {
+                            width: parent.width
                             text: "llama.cpp  pid " + modelData.pid
                                  + (modelData.alias ? "  [" + modelData.alias + "]" : "")
                                  + (modelData.port ? "  :port " + modelData.port : "")
                                  + (modelData.model ? "  " + modelData.model.split("/").pop() : "")
                             color: "#4d9fff"; font.bold: true; font.pointSize: 9
+                            wrapMode: Text.Wrap
                         }
-                        Label {
-                            Layout.fillWidth: true
+                        Text {
+                            width: parent.width
                             text: "ngl: " + (modelData.ngl || "N/A")
                                  + "   ctx: " + (modelData.ctx || "N/A")
                                  + "   parallel: " + (modelData.parallel || "N/A")
                                  + "   rss: " + (modelData.rss_kb ? (modelData.rss_kb / 1048576).toFixed(1) + " GiB" : "N/A")
                                  + "   threads: " + (modelData.threads || "N/A")
                             color: "#aeb4bb"; font.pointSize: 8
+                            wrapMode: Text.Wrap
                         }
-                        Label {
-                            Layout.fillWidth: true
+                        Text {
+                            width: parent.width
                             text: modelData.cmdline
                             color: "#6a7078"; font.pointSize: 7; font.family: "monospace"
                             wrapMode: Text.Wrap
-                            elide: Text.ElideRight
-                            maximumLineCount: 3
                         }
                     }
                 }
@@ -463,23 +469,21 @@ PlasmoidItem {
                     Layout.fillWidth: true
                     color: "#1a1f25"
                     radius: 3
-                    ColumnLayout {
+                    Column {
                         anchors.fill: parent
                         anchors.margins: 8
                         spacing: 3
-                        Label {
-                            Layout.fillWidth: true
+                        Text {
+                            width: parent.width
                             text: "ollama  pid " + modelData.pid
                                  + (modelData.subcmd ? "  " + modelData.subcmd : "")
                             color: "#e8c33a"; font.bold: true; font.pointSize: 9
                         }
-                        Label {
-                            Layout.fillWidth: true
+                        Text {
+                            width: parent.width
                             text: modelData.cmdline
                             color: "#6a7078"; font.pointSize: 7; font.family: "monospace"
                             wrapMode: Text.Wrap
-                            elide: Text.ElideRight
-                            maximumLineCount: 3
                         }
                     }
                 }
@@ -505,23 +509,21 @@ PlasmoidItem {
                     Layout.fillWidth: true
                     color: "#1a1f25"
                     radius: 3
-                    ColumnLayout {
+                    Column {
                         anchors.fill: parent
                         anchors.margins: 8
                         spacing: 3
-                        Label {
-                            Layout.fillWidth: true
+                        Text {
+                            width: parent.width
                             text: "vllm  pid " + modelData.pid
                                  + (modelData.model ? "  " + modelData.model : "")
                             color: "#b07fe8"; font.bold: true; font.pointSize: 9
                         }
-                        Label {
-                            Layout.fillWidth: true
+                        Text {
+                            width: parent.width
                             text: modelData.cmdline
                             color: "#6a7078"; font.pointSize: 7; font.family: "monospace"
                             wrapMode: Text.Wrap
-                            elide: Text.ElideRight
-                            maximumLineCount: 3
                         }
                     }
                 }

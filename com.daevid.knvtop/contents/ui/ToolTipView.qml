@@ -14,6 +14,11 @@ Item {
 
     function mb(v) {
         if (v === null || v === undefined) return "N/A";
+        return (v / 1024).toFixed(1) + " GiB";
+    }
+
+    function bytes(v) {
+        if (v === null || v === undefined) return "N/A";
         return (v / 1073741824).toFixed(1) + " GiB";
     }
 
@@ -182,7 +187,7 @@ Item {
                 Layout.preferredWidth: 40
             }
             Text {
-                text: tip.mb(tip.sys.ram_used) + "/" + tip.mb(tip.sys.ram_total)
+                text: tip.bytes(tip.sys.ram_used) + "/" + tip.bytes(tip.sys.ram_total)
                 color: "#c8ccd2"
                 font.pointSize: 9
             }
