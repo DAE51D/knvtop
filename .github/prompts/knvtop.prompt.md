@@ -448,6 +448,55 @@ the nvtop source. Full detail: session memory `knvtop-research.md`.
   widget via scripting — different (and much lower-risk) from the
   `addWidget`/`evaluateScript` re-instantiation flood warned about above.
 
+## Implementation learnings (2026-08-29, generic scan + unified list)
+
+- **`knvtop_poll.py` and `knvtop_service.py` have two SEPARATE, hand-
+  duplicated sample-building loops — a change to one does NOT reach the
+  live widget unless mirrored in the other.** `knvtop_poll.py`'s own
+  `main()` is only ever exercised by running the script standalone
+  (`python3 knvtop_poll.py`); the actual systemd service runs
+  `knvtop_service.py`, whose `KnvtopService._poll_loop()` imports specific
+  functions by name (`from knvtop_poll import gpu_sample, sys_sample,
+  llm_sample, ollama_ps`) and builds its OWN sample dict independently.
+  Adding `gpu_proc_sample()` to `knvtop_poll.py` and testing it via
+  `timeout 3 python3 knvtop_poll.py` looked completely correct for an
+  entire debugging session while the live D-Bus service silently never
+  had the feature at all (`_poll_loop()`'s `except Exception: pass` gave
+  no error either — it wasn't erroring, `gpu_proc_sample()` just wasn't in
+  the import line). **Whenever a new top-level sample field is added to
+  `knvtop_poll.py`, it MUST also be wired into `knvtop_service.py`'s
+  import line and `_poll_loop()`'s dict** — verify against the LIVE D-Bus
+  service (`qdbus6 com.daevid.knvtop /com/daevid/knvtop
+  com.daevid.knvtop.Sample.Get`), not just a standalone script run, before
+  concluding a backend change actually shipped.
+- **`Repeater.visible = false` does not hide its delegates.** A `Repeater`
+  is a non-visual instantiator — the Items it creates get inserted as
+  *siblings* of the Repeater in the tree, not children of it, so its own
+  `visible` property has no bearing on them. The sanctioned way to
+  conditionally show/hide repeated content is to gate the `model:`
+  property itself (empty array when hidden), not to toggle `visible` on
+  the `Repeater` element.
+- **UX design correction, worth internalizing for any future filter UI on
+  this widget**: a "show only X" checkbox should *narrow* a single list,
+  not *switch between two disjoint views*. The first cut of the AI/LLM-
+  only toggle built two separate code paths (specialized LLM cards XOR a
+  separate generic list) that never overlapped — checked hid the generic
+  list entirely, unchecked hid the LLM cards entirely, which is not what
+  "processes only" filtering should mean. Fixed with `root.unifiedProcs`
+  (merge `gpuProcs` with the recognized-by-name llama/ollama/vllm entries
+  by pid, tagging `kind`) and `root.visibleProcs` (checked → keep only
+  entries with a `kind`; unchecked → everything, LLM entries included). A
+  recognized process keeps its rich fields (ngl/ctx/flags table, etc.)
+  even when shown unfiltered alongside plain generic entries — merging
+  preserves the LLM-specific data, it doesn't discard it in favor of the
+  generic shape.
+- **`llm_sample()` entries whose process has no open GPU fd (e.g. a pure
+  HTTP router in front of the real GPU-computing workers) legitimately
+  have no counterpart in `gpu_proc_sample()`'s scan at all.** They aren't
+  a subset of each other — the merge above has to layer LLM entries on
+  top of (not filter down from) the generic scan, keyed by pid, so a
+  recognized process that doesn't hold a DRM fd still shows up.
+
 ## TODO
 
 - [x] Phase 1: plasmoid scaffold (`metadata.json` + `main.qml`), verify loads
