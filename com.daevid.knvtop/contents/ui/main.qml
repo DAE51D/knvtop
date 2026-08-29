@@ -279,9 +279,12 @@ PlasmoidItem {
                 width: parent.width
                 spacing: 8
 
-                // 5 ring gauges in widget order: GPU MEM TMP PWR CPU (click to toggle line)
+                // 5 ring gauges in widget order: GPU MEM TMP PWR CPU (click to toggle line).
+                // Not Layout.fillWidth: the row is only as wide as its 5 fixed-size
+                // rings need — Qt.AlignHCenter centers that within the popup instead
+                // of leaving it left-anchored with dead space to the right.
                 RowLayout {
-                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignHCenter
                     Layout.bottomMargin: 4
                     spacing: 8
 
@@ -400,16 +403,17 @@ PlasmoidItem {
                     }
                 }
 
-                // ollama loaded models
+                // ollama — one card per loaded model, same treatment as
+                // llama.cpp/vllm (ollama doesn't expose CLI flags per model,
+                // so the subtitle carries the equivalent info instead)
                 Repeater {
                     model: root.ollamaModels
-                    delegate: Label {
-                        Layout.fillWidth: true
-                        text: "  loaded: " + modelData.name
-                             + "  " + (modelData.quantization || "")
-                             + "  " + (modelData.parameter_size || "")
-                             + "  vram " + (modelData.size_vram ? (modelData.size_vram / 1073741824).toFixed(1) + " GiB" : "N/A")
-                        color: "#c8ccd2"; font.pointSize: 8
+                    delegate: LlmCard {
+                        titleColor: "#e8c33a"
+                        title: "ollama model  " + modelData.name
+                        subtitle: "params: " + (modelData.parameter_size || "N/A")
+                             + "   quant: " + (modelData.quantization || "N/A")
+                             + "   vram: " + (modelData.size_vram ? (modelData.size_vram / 1073741824).toFixed(1) + " GiB" : "N/A")
                     }
                 }
 
