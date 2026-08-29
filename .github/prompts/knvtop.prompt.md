@@ -429,8 +429,17 @@ the nvtop source. Full detail: session memory `knvtop-research.md`.
 - [x] Phase 3: custom `ToolTipView.qml` with colored bars (GPU/MEM/PWR/CPU/RAM)
 - [x] Phase 3: click-to-expand via `root.expanded` + topmost `MouseArea`
 - [x] Phase 3: cosmetic cleanup (ring gauge overlap, graph height, card text wrap)
-- [ ] Phase 4: README + prompt-file sync; optional `config/main.xml`
-- [ ] Milestone commits 1–4 pushed to `main` (Gitea `DAE51D/knvtop`)
+- [x] Phase 3 polish pass (2026-08-28 evening): `Ring.qml`/`LlmCard.qml`
+  extraction, ollama-owned-child exclusion, popup width/gap fixes (the
+  ScrollView width trap + the popupWidth config-cache trap), ring
+  centering, per-model ollama cards, pid de-emphasis, Flow→Row for the
+  stats chips. See "Second pass" and later learnings above for the
+  root-cause writeups.
+- [ ] Phase 4: README.md is currently empty — still needs writing (install,
+  data sources, the nvtop-MEM-divergence note); prompt-file is kept in
+  sync as-we-go already. Optional `config/main.xml` for sample interval /
+  line visibility.
+- [x] Milestone commits pushed to `main` (Gitea `DAE51D/knvtop`)
 
 ## Verification
 
