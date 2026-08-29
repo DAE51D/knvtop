@@ -378,6 +378,35 @@ the nvtop source. Full detail: session memory `knvtop-research.md`.
   **Rule of thumb for any future card/container inside a Layout: always size
   it via `implicitHeight`/`Layout.preferredHeight`, never a raw `height:`
   binding — the Layout system silently ignores the latter.**
+- **Wrong fix direction: forcing a dark background everywhere.** A light-
+  themed screenshot showed the ring row/stats row text washed out. The
+  first fix (hardcoding `background: Rectangle { color: "#101418" }` on
+  the ScrollView) was backwards — the widget is supposed to have both a
+  light and dark mode by following Plasma's own system color scheme for
+  the ring/stats area (only the graph/cards/compact widget are meant to be
+  permanently dark, nvtop-terminal style, via their own explicit Rectangle
+  backgrounds). The real fix: leave that area's background alone (no
+  explicit background = inherits Plasma's popup theme) and make ITS TEXT
+  theme-aware instead, via `Kirigami.Theme.textColor` (see below), so it
+  reads correctly in both light and dark system themes — reverted the
+  background hack once this was understood.
+- **`PlasmaCore.Theme.textColor` does not exist in Plasma 6 QML** — throws
+  `TypeError: Cannot read property 'textColor' of undefined`. Grepped every
+  installed system plasmoid under `/usr/share/plasma/plasmoids`: zero use
+  `PlasmaCore.Theme.*`, several use `Kirigami.Theme.textColor` (confirmed
+  via `org.kde.desktopcontainment`). Use `import org.kde.kirigami as
+  Kirigami` + `Kirigami.Theme.textColor` for theme-aware colors; dim a
+  "muted/secondary" variant with `Qt.rgba(c.r, c.g, c.b, 0.65)` rather than
+  a second theme color role.
+- **An illegal `--` inside an XML comment silently breaks the ENTIRE kcfg
+  file, not just the entry near it.** Added `config/main.xml` with a
+  comment containing `entry -- this just persists...` (double hyphen,
+  invalid per the XML spec inside comments). Result: every single
+  `Plasmoid.configuration.*` property in `main.qml` came back `undefined`
+  ("Unable to assign [undefined] to bool" x5, for unrelated properties
+  scattered through the whole file) — not an isolated failure near the
+  comment. `xmllint --noout config/main.xml` catches this instantly;
+  worth running after any kcfg edit, before deploying.
 - **Popup dialog sizing.** `fullRepresentation` set a raw `width`/`height`
   directly on the root `ScrollView`. Plasma's popup `Dialog` sizes itself
   from `Layout.preferredWidth/Height` / `Layout.minimumWidth/Height` hints
@@ -435,10 +464,23 @@ the nvtop source. Full detail: session memory `knvtop-research.md`.
   centering, per-model ollama cards, pid de-emphasis, Flow→Row for the
   stats chips. See "Second pass" and later learnings above for the
   root-cause writeups.
+- [x] `config/main.xml` + `config.qml` + `ui/ConfigGeneral.qml`: persists
+  the 5 line-visibility toggles (`showGpu`/`showMem`/`showTemp`/
+  `showPower`/`showCpu`) via `Plasmoid.configuration` instead of plain QML
+  properties reset every session. Popup header row: pin button (checkable
+  `window-pin`, toggles `root.hideOnWindowDeactivate`) + configure button
+  (triggers the real `configure` internal action now that a config page
+  exists). Only a poll-interval setting remains a nice-to-have — not added
+  since the D-Bus service samples at a fixed 1 Hz regardless, so a
+  QML-side interval knob wouldn't get new data any faster without also
+  plumbing it through `knvtop_poll.py`/`knvtop_service.py`.
+- [x] Ring row + stats row text is theme-aware (`Kirigami.Theme.textColor`)
+  so it reads correctly in both Plasma light and dark color schemes — the
+  graph/cards/compact widget stay permanently dark by design (nvtop-style
+  terminal panels), only this area follows the system theme.
 - [ ] Phase 4: README.md is currently empty — still needs writing (install,
   data sources, the nvtop-MEM-divergence note); prompt-file is kept in
-  sync as-we-go already. Optional `config/main.xml` for sample interval /
-  line visibility.
+  sync as-we-go already.
 - [x] Milestone commits pushed to `main` (Gitea `DAE51D/knvtop`)
 
 ## Verification
