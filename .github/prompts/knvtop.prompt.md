@@ -279,8 +279,17 @@ the nvtop source. Full detail: session memory `knvtop-research.md`.
   hover UI (bars, colors, multi-line), use `toolTipItem: ToolTipView { ... }`.
   The plain text properties only render monochrome text.
 - **Plasmoids do NOT hot-reload QML.** After `cp -r` to the install dir, you
-  must either logout/login or `kquitapp6 plasmashell && kstart6 plasmashell`.
-  Removing and re-adding the widget from the panel also works.
+  must either logout/login or restart plasmashell. Removing and re-adding
+  the widget from the panel also works. **No logout needed — and `kstart6`
+  does not exist on this Kubuntu 26.04 install** (only `kstart`/`kstart5`,
+  neither of which is `kstart6`); the reliable command here is just:
+  `kquitapp6 plasmashell; nohup plasmashell >/tmp/plasmashell.log 2>&1 & disown`
+  (a bare `&` without `disown`/`setsid` can get killed when the invoking
+  shell/subshell exits). Check the log for `knvtop`/QML `error`/`Cannot`
+  lines after restart to confirm the new QML loaded cleanly. If the
+  D-Bus backend (`knvtop_poll.py`) changed instead, `systemctl --user
+  restart knvtop.service` is the equivalent — no plasmashell restart
+  needed for backend-only changes.
 
 ### Panel sizing
 
@@ -341,6 +350,52 @@ the nvtop source. Full detail: session memory `knvtop-research.md`.
   while it was open. `Ring.qml` fixes this with explicit
   `onRatioChanged/onValueTextChanged/onRingColorChanged: canvas.requestPaint()`,
   matching the working `Sparkline.qml` `onRevisionChanged` pattern.
+
+### Second pass (2026-08-28, after live screenshot review)
+
+- **Backend bug — phantom duplicate "llama.cpp" card.** `_is_llm()`/
+  `llm_sample()` classified any process by `exe.startswith("llama")`, which
+  also matches ollama's own bundled runner (e.g.
+  `/usr/local/lib/ollama/llama-server`) that ollama spawns per loaded
+  model. That showed up as a second, confusing "llama.cpp" card with no
+  useful ngl/ctx/parallel info (ollama's runner uses short flags `-c`/`-np`,
+  not `--ctx-size`/`--parallel`). Fixed with `_is_ollama_owned(argv)` —
+  skip any `llama*` process whose binary path has `ollama` as a directory
+  component. Verified live against the running D-Bus service.
+- **QML bug — the real root cause of "CLI flags not wrapping".** `LlmCard.qml`
+  (and the inline blocks before it) sized the card via a plain
+  `height: col.implicitHeight + 16` on the Rectangle. **`ColumnLayout` sizes
+  a managed child from `Layout.preferredHeight`, falling back to
+  `implicitHeight` — it does NOT read a child's raw `height:` binding.**
+  So the outer ColumnLayout never learned the card needed to be taller for
+  a long wrapped cmdline; the Text wrapped correctly internally, but its
+  lines painted past the Rectangle's (too-short) bottom edge and visually
+  overlapped whatever card/label came next in the popup. This is why the
+  "fix cmdline wrap" commit (`b6ccb76`) never actually resolved the report —
+  wrapping itself worked, containment didn't. Fixed by using
+  `implicitHeight: col.implicitHeight + 16` instead of `height:`, matching
+  corestrip's own `Card.qml` (`implicitHeight: layout.implicitHeight + ...`).
+  **Rule of thumb for any future card/container inside a Layout: always size
+  it via `implicitHeight`/`Layout.preferredHeight`, never a raw `height:`
+  binding — the Layout system silently ignores the latter.**
+- **Popup dialog sizing.** `fullRepresentation` set a raw `width`/`height`
+  directly on the root `ScrollView`. Plasma's popup `Dialog` sizes itself
+  from `Layout.preferredWidth/Height` / `Layout.minimumWidth/Height` hints
+  on the fullRepresentation root, not from raw geometry — without those
+  hints the dialog chrome can end up wider than the content filling it
+  (a persistent right-side gap after every row). Fixed by wrapping the
+  `ScrollView` in an outer `Item` carrying those Layout hints, matching
+  corestrip's `FullView.qml` root-Item pattern.
+- **Verifying popup-only visual changes for this plasmoid is hard to
+  automate.** No `xdotool`/`ydotool` were installed initially; installed
+  `ydotool` + `ydotoold` (Wayland-native, uses `/dev/uinput`) since `xdotool`
+  does not work against native Wayland windows/panels, only XWayland.
+  `ydotool mousemove --absolute`/`click 0xC0` do move the real cursor and
+  can click, confirmed via a taskbar tooltip appearing at the target
+  coordinate — but blindly clicking panel/system-tray coordinates is risky:
+  one attempt landed on an unintended target and triggered Plasma's
+  Overview effect instead of the plasmoid popup. Prefer asking the user to
+  click and screenshot over repeated blind coordinate guesses.
 
 ## TODO
 

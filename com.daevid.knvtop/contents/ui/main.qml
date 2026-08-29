@@ -261,156 +261,167 @@ PlasmoidItem {
     }
 
     // ---- full representation: detail panel ---------------------------
-    fullRepresentation: ScrollView {
-        width: inPanel ? 560 : 640
-        height: inPanel ? 440 : 540
+    // Plasma sizes the popup dialog from Layout.preferred/minimumWidth/Height
+    // hints on this root item, not from a raw width/height assignment — an
+    // Item wrapper carrying those hints (matching corestrip's FullView.qml)
+    // is what keeps the dialog from ending up wider than the ScrollView
+    // actually filling it.
+    fullRepresentation: Item {
+        Layout.minimumWidth: inPanel ? 400 : 460
+        Layout.preferredWidth: inPanel ? 560 : 640
+        Layout.minimumHeight: 320
+        Layout.preferredHeight: inPanel ? 440 : 540
 
-        ColumnLayout {
-            width: parent.width
-            spacing: 8
+        ScrollView {
+            anchors.fill: parent
 
-            // 5 ring gauges in widget order: GPU MEM TMP PWR CPU (click to toggle line)
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.bottomMargin: 4
+            ColumnLayout {
+                width: parent.width
                 spacing: 8
 
-                Repeater {
-                    model: [
-                        { key: "showGpu", label: "GPU", color: "#4d9fff",
-                          ratio: (root.gpu.util || 0) / 100,
-                          text: root.fmt(root.gpu.util, "%") },
-                        { key: "showMem", label: "MEM", color: "#e8c33a",
-                          ratio: (root.gpu.mem_used !== null && root.gpu.mem_total)
-                                 ? Math.min(1, root.gpu.mem_used / root.gpu.mem_total) : 0,
-                          text: (root.gpu.mem_used !== null && root.gpu.mem_total)
-                                ? root.fmt(root.gpu.mem_used * 100 / root.gpu.mem_total, "%") : "N/A" },
-                        { key: "showTemp", label: "TMP", color: "#b07fe8",
-                          ratio: Math.min(1, (root.gpu.temp || 0) / root.tempMax),
-                          text: root.fmt(root.gpu.temp, "°") },
-                        { key: "showPower", label: "PWR", color: "#3ddc84",
-                          ratio: Math.min(1, (root.gpu.power_w || 0) / (root.gpu.power_cap_w || 100)),
-                          text: root.fmt(root.gpu.power_w, "W") },
-                        { key: "showCpu", label: "CPU", color: "#ff8c42",
-                          ratio: (root.sys.cpu || 0) / 100,
-                          text: root.fmt(root.sys.cpu, "%") },
-                    ]
-                    delegate: Item {
-                        Layout.preferredWidth: 64; Layout.preferredHeight: 64
-                        Ring {
-                            anchors.fill: parent
-                            ratio: modelData.ratio
-                            ringColor: modelData.color
-                            valueText: modelData.text
-                            label: modelData.label
-                            active: root[modelData.key]
-                        }
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root[modelData.key] = !root[modelData.key]
+                // 5 ring gauges in widget order: GPU MEM TMP PWR CPU (click to toggle line)
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.bottomMargin: 4
+                    spacing: 8
+
+                    Repeater {
+                        model: [
+                            { key: "showGpu", label: "GPU", color: "#4d9fff",
+                              ratio: (root.gpu.util || 0) / 100,
+                              text: root.fmt(root.gpu.util, "%") },
+                            { key: "showMem", label: "MEM", color: "#e8c33a",
+                              ratio: (root.gpu.mem_used !== null && root.gpu.mem_total)
+                                     ? Math.min(1, root.gpu.mem_used / root.gpu.mem_total) : 0,
+                              text: (root.gpu.mem_used !== null && root.gpu.mem_total)
+                                    ? root.fmt(root.gpu.mem_used * 100 / root.gpu.mem_total, "%") : "N/A" },
+                            { key: "showTemp", label: "TMP", color: "#b07fe8",
+                              ratio: Math.min(1, (root.gpu.temp || 0) / root.tempMax),
+                              text: root.fmt(root.gpu.temp, "°") },
+                            { key: "showPower", label: "PWR", color: "#3ddc84",
+                              ratio: Math.min(1, (root.gpu.power_w || 0) / (root.gpu.power_cap_w || 100)),
+                              text: root.fmt(root.gpu.power_w, "W") },
+                            { key: "showCpu", label: "CPU", color: "#ff8c42",
+                              ratio: (root.sys.cpu || 0) / 100,
+                              text: root.fmt(root.sys.cpu, "%") },
+                        ]
+                        delegate: Item {
+                            Layout.preferredWidth: 64; Layout.preferredHeight: 64
+                            Ring {
+                                anchors.fill: parent
+                                ratio: modelData.ratio
+                                ringColor: modelData.color
+                                valueText: modelData.text
+                                label: modelData.label
+                                active: root[modelData.key]
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root[modelData.key] = !root[modelData.key]
+                            }
                         }
                     }
                 }
-            }
 
-            // stats chips — wraps per-chip instead of mid-word, and never
-            // visually crowds the ring row above it
-            Flow {
-                Layout.fillWidth: true
-                Layout.topMargin: 2
-                spacing: 12
-
-                Text {
-                    text: "MEM " + (root.gpu.mem_used !== null && root.gpu.mem_total
-                          ? root.mb(root.gpu.mem_used) + "/" + root.mb(root.gpu.mem_total) : "N/A")
-                    color: "#8a9199"; font.pointSize: 8
-                }
-                Text {
-                    text: "TMP " + root.fmt(root.gpu.temp, "°C", 1)
-                    color: "#8a9199"; font.pointSize: 8
-                }
-                Text {
-                    text: "PWR " + root.fmt(root.gpu.power_w, "W", 1)
-                    color: "#8a9199"; font.pointSize: 8
-                }
-                Text {
-                    text: "sys " + root.bytes(root.sys.ram_used) + "/" + root.bytes(root.sys.ram_total)
-                    color: "#8a9199"; font.pointSize: 8
-                }
-                Text {
-                    text: "load " + root.sys.load1.toFixed(2)
-                    color: "#8a9199"; font.pointSize: 8
-                }
-            }
-
-            // graph section
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 96
-                color: "#101418"
-                radius: 3
-                Item {
-                    anchors.fill: parent
-                    anchors.margins: 2
-                    Sparkline { anchors.fill: parent; visible: root.showGpu; values: root.histUtil; revision: root.revision; maximum: 100; lineColor: "#4d9fff"; capacity: root.windowSize }
-                    Sparkline { anchors.fill: parent; visible: root.showMem; values: root.histMem; revision: root.revision; maximum: 100; lineColor: "#e8c33a"; capacity: root.windowSize }
-                    Sparkline { anchors.fill: parent; visible: root.showTemp; values: root.histTemp; revision: root.revision; maximum: root.tempMax; lineColor: "#b07fe8"; capacity: root.windowSize }
-                    Sparkline { anchors.fill: parent; visible: root.showPower; values: root.histPower; revision: root.revision; maximum: 100; lineColor: "#3ddc84"; capacity: root.windowSize }
-                    Sparkline { anchors.fill: parent; visible: root.showCpu; values: root.histCpu; revision: root.revision; maximum: 100; lineColor: "#ff8c42"; capacity: root.windowSize }
-                }
-            }
-
-            // llama.cpp — only show instances with a model loaded
-            Repeater {
-                model: root.llama.filter(function(l) { return l.model !== null && l.model !== undefined && l.model !== "" })
-                delegate: LlmCard {
-                    titleColor: "#4d9fff"
-                    title: "llama.cpp  pid " + modelData.pid
-                         + (modelData.alias ? "  [" + modelData.alias + "]" : "")
-                         + (modelData.port ? "  :port " + modelData.port : "")
-                         + (modelData.model ? "  " + modelData.model.split("/").pop() : "")
-                    subtitle: "ngl: " + (modelData.ngl || "N/A")
-                         + "   ctx: " + (modelData.ctx || "N/A")
-                         + "   parallel: " + (modelData.parallel || "N/A")
-                         + "   rss: " + (modelData.rss_kb ? (modelData.rss_kb / 1048576).toFixed(1) + " GiB" : "N/A")
-                         + "   threads: " + (modelData.threads || "N/A")
-                    cmdline: modelData.cmdline
-                }
-            }
-
-            // ollama — only show if there are loaded models
-            Repeater {
-                model: root.ollamaModels.length > 0 ? root.ollama : []
-                delegate: LlmCard {
-                    titleColor: "#e8c33a"
-                    title: "ollama  pid " + modelData.pid
-                         + (modelData.subcmd ? "  " + modelData.subcmd : "")
-                    cmdline: modelData.cmdline
-                }
-            }
-
-            // ollama loaded models
-            Repeater {
-                model: root.ollamaModels
-                delegate: Label {
+                // stats chips — wraps per-chip instead of mid-word, and never
+                // visually crowds the ring row above it
+                Flow {
                     Layout.fillWidth: true
-                    text: "  loaded: " + modelData.name
-                         + "  " + (modelData.quantization || "")
-                         + "  " + (modelData.parameter_size || "")
-                         + "  vram " + (modelData.size_vram ? (modelData.size_vram / 1073741824).toFixed(1) + " GiB" : "N/A")
-                    color: "#c8ccd2"; font.pointSize: 8
-                }
-            }
+                    Layout.topMargin: 2
+                    spacing: 12
 
-            // vllm — only show instances with a model
-            Repeater {
-                model: root.vllm.filter(function(v) { return v.model !== null && v.model !== undefined && v.model !== "" })
-                delegate: LlmCard {
-                    titleColor: "#b07fe8"
-                    title: "vllm  pid " + modelData.pid
-                         + (modelData.model ? "  " + modelData.model : "")
-                    cmdline: modelData.cmdline
+                    Text {
+                        text: "MEM " + (root.gpu.mem_used !== null && root.gpu.mem_total
+                              ? root.mb(root.gpu.mem_used) + "/" + root.mb(root.gpu.mem_total) : "N/A")
+                        color: "#8a9199"; font.pointSize: 8
+                    }
+                    Text {
+                        text: "TMP " + root.fmt(root.gpu.temp, "°C", 1)
+                        color: "#8a9199"; font.pointSize: 8
+                    }
+                    Text {
+                        text: "PWR " + root.fmt(root.gpu.power_w, "W", 1)
+                        color: "#8a9199"; font.pointSize: 8
+                    }
+                    Text {
+                        text: "sys " + root.bytes(root.sys.ram_used) + "/" + root.bytes(root.sys.ram_total)
+                        color: "#8a9199"; font.pointSize: 8
+                    }
+                    Text {
+                        text: "load " + root.sys.load1.toFixed(2)
+                        color: "#8a9199"; font.pointSize: 8
+                    }
+                }
+
+                // graph section
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 96
+                    color: "#101418"
+                    radius: 3
+                    Item {
+                        anchors.fill: parent
+                        anchors.margins: 2
+                        Sparkline { anchors.fill: parent; visible: root.showGpu; values: root.histUtil; revision: root.revision; maximum: 100; lineColor: "#4d9fff"; capacity: root.windowSize }
+                        Sparkline { anchors.fill: parent; visible: root.showMem; values: root.histMem; revision: root.revision; maximum: 100; lineColor: "#e8c33a"; capacity: root.windowSize }
+                        Sparkline { anchors.fill: parent; visible: root.showTemp; values: root.histTemp; revision: root.revision; maximum: root.tempMax; lineColor: "#b07fe8"; capacity: root.windowSize }
+                        Sparkline { anchors.fill: parent; visible: root.showPower; values: root.histPower; revision: root.revision; maximum: 100; lineColor: "#3ddc84"; capacity: root.windowSize }
+                        Sparkline { anchors.fill: parent; visible: root.showCpu; values: root.histCpu; revision: root.revision; maximum: 100; lineColor: "#ff8c42"; capacity: root.windowSize }
+                    }
+                }
+
+                // llama.cpp — only show instances with a model loaded
+                Repeater {
+                    model: root.llama.filter(function(l) { return l.model !== null && l.model !== undefined && l.model !== "" })
+                    delegate: LlmCard {
+                        titleColor: "#4d9fff"
+                        title: "llama.cpp  pid " + modelData.pid
+                             + (modelData.alias ? "  [" + modelData.alias + "]" : "")
+                             + (modelData.port ? "  :port " + modelData.port : "")
+                             + (modelData.model ? "  " + modelData.model.split("/").pop() : "")
+                        subtitle: "ngl: " + (modelData.ngl || "N/A")
+                             + "   ctx: " + (modelData.ctx || "N/A")
+                             + "   parallel: " + (modelData.parallel || "N/A")
+                             + "   rss: " + (modelData.rss_kb ? (modelData.rss_kb / 1048576).toFixed(1) + " GiB" : "N/A")
+                             + "   threads: " + (modelData.threads || "N/A")
+                        cmdline: modelData.cmdline
+                    }
+                }
+
+                // ollama — only show if there are loaded models
+                Repeater {
+                    model: root.ollamaModels.length > 0 ? root.ollama : []
+                    delegate: LlmCard {
+                        titleColor: "#e8c33a"
+                        title: "ollama  pid " + modelData.pid
+                             + (modelData.subcmd ? "  " + modelData.subcmd : "")
+                        cmdline: modelData.cmdline
+                    }
+                }
+
+                // ollama loaded models
+                Repeater {
+                    model: root.ollamaModels
+                    delegate: Label {
+                        Layout.fillWidth: true
+                        text: "  loaded: " + modelData.name
+                             + "  " + (modelData.quantization || "")
+                             + "  " + (modelData.parameter_size || "")
+                             + "  vram " + (modelData.size_vram ? (modelData.size_vram / 1073741824).toFixed(1) + " GiB" : "N/A")
+                        color: "#c8ccd2"; font.pointSize: 8
+                    }
+                }
+
+                // vllm — only show instances with a model
+                Repeater {
+                    model: root.vllm.filter(function(v) { return v.model !== null && v.model !== undefined && v.model !== "" })
+                    delegate: LlmCard {
+                        titleColor: "#b07fe8"
+                        title: "vllm  pid " + modelData.pid
+                             + (modelData.model ? "  " + modelData.model : "")
+                        cmdline: modelData.cmdline
+                    }
                 }
             }
         }

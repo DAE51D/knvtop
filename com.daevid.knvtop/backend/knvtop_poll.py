@@ -232,6 +232,15 @@ def _is_llm(argv):
     )
 
 
+def _is_ollama_owned(argv):
+    """Ollama bundles its own llama-server binary (e.g.
+    /usr/local/lib/ollama/llama-server) and launches one per loaded model.
+    Those are implementation detail of the ollama section, not a separate
+    standalone llama.cpp instance the user started themselves — skip them
+    here so they don't show up as a phantom duplicate "llama.cpp" card."""
+    return "ollama" in argv[0].split("/")[:-1]
+
+
 def llm_sample():
     llama, ollama, vllm = [], [], []
     try:
@@ -241,6 +250,9 @@ def llm_sample():
     for pid in pids:
         argv = _proc_cmdline(pid)
         if argv is None or not _is_llm(argv):
+            continue
+        exe = os.path.basename(argv[0])
+        if exe.startswith("llama") and _is_ollama_owned(argv):
             continue
         st = _proc_status(pid, {"Name", "VmRSS", "Threads"})
         entry = {
@@ -252,7 +264,6 @@ def llm_sample():
             else None,
             "threads": int(st["Threads"]) if st.get("Threads", "").isdigit() else None,
         }
-        exe = os.path.basename(argv[0])
         if exe.startswith("llama"):
             entry["model"] = _find("--model", argv)
             entry["ngl"] = _find("--n-gpu-layers", argv)

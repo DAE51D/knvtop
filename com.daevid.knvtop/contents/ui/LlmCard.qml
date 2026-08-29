@@ -15,7 +15,11 @@ Rectangle {
     Layout.fillWidth: true
     color: "#1a1f25"
     radius: 3
-    height: col.implicitHeight + 16
+    // ColumnLayout sizes children from Layout.preferredHeight/implicitHeight,
+    // not a plain height: binding — a raw `height:` here never reaches the
+    // outer layout, so a card with wrapped multi-line cmdline text just
+    // overflows its own Rectangle and paints over whatever comes next.
+    implicitHeight: col.implicitHeight + 16
 
     ColumnLayout {
         id: col
