@@ -156,11 +156,6 @@ PlasmoidItem {
                 anchors.fill: parent
                 anchors.bottomMargin: 12
 
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: root.expanded = !root.expanded
-                }
-
                 Sparkline {
                     anchors.fill: parent
                     visible: root.showGpu
@@ -205,6 +200,11 @@ PlasmoidItem {
                     maximum: 100
                     lineColor: "#ff8c42"
                     capacity: root.windowSize
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: root.expanded = !root.expanded
                 }
             }
 
