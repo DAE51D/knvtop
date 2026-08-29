@@ -2,6 +2,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import org.kde.plasma.core as PlasmaCore
+import org.kde.plasma.components as PlasmaComponents
+import org.kde.kirigami as Kirigami
 import org.kde.plasma.plasmoid
 import org.kde.plasma.workspace.dbus as PlasmaDBus
 
@@ -39,12 +41,16 @@ PlasmoidItem {
     readonly property int tempMax: 100
     readonly property double tempFloor: 30
 
-    // line visibility toggles
-    property bool showGpu: true
-    property bool showMem: true
-    property bool showTemp: true
-    property bool showPower: true
-    property bool showCpu: true
+    // Muted secondary text: theme-aware (unlike the compact widget/graph/
+    // cards, which sit on their own fixed dark Rectangle and use fixed
+    // colors on purpose) since the ring row and stats row sit directly on
+    // Plasma's own popup background, which follows the system color scheme.
+    readonly property color mutedTextColor: Qt.rgba(
+        Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g,
+        Kirigami.Theme.textColor.b, 0.65)
+
+    // line visibility toggles — persisted via config/main.xml (Plasmoid.configuration)
+    // so a toggle sticks across sessions, not just plain local properties
 
     function fmt(v, suffix, digits) {
         if (v === null || v === undefined) return "N/A";
@@ -163,7 +169,7 @@ PlasmoidItem {
 
                 Sparkline {
                     anchors.fill: parent
-                    visible: root.showGpu
+                    visible: Plasmoid.configuration.showGpu
                     values: root.histUtil
                     revision: root.revision
                     maximum: 100
@@ -172,7 +178,7 @@ PlasmoidItem {
                 }
                 Sparkline {
                     anchors.fill: parent
-                    visible: root.showMem
+                    visible: Plasmoid.configuration.showMem
                     values: root.histMem
                     revision: root.revision
                     maximum: 100
@@ -181,7 +187,7 @@ PlasmoidItem {
                 }
                 Sparkline {
                     anchors.fill: parent
-                    visible: root.showTemp
+                    visible: Plasmoid.configuration.showTemp
                     values: root.histTemp
                     revision: root.revision
                     maximum: root.tempMax
@@ -190,7 +196,7 @@ PlasmoidItem {
                 }
                 Sparkline {
                     anchors.fill: parent
-                    visible: root.showPower
+                    visible: Plasmoid.configuration.showPower
                     values: root.histPower
                     revision: root.revision
                     maximum: 100
@@ -199,7 +205,7 @@ PlasmoidItem {
                 }
                 Sparkline {
                     anchors.fill: parent
-                    visible: root.showCpu
+                    visible: Plasmoid.configuration.showCpu
                     values: root.histCpu
                     revision: root.revision
                     maximum: 100
@@ -239,20 +245,20 @@ PlasmoidItem {
                                 width: 6; height: 2
                                 anchors.verticalCenter: parent.verticalCenter
                                 color: modelData.color
-                                opacity: root[modelData.prop] ? 1 : 0.3
+                                opacity: Plasmoid.configuration[modelData.prop] ? 1 : 0.3
                             }
                             Label {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: modelData.label
                                 font.pointSize: 7.5
-                                color: root[modelData.prop] ? "#8a9199" : "#4a4f55"
-                                opacity: root[modelData.prop] ? 1 : 0.4
+                                color: Plasmoid.configuration[modelData.prop] ? "#8a9199" : "#4a4f55"
+                                opacity: Plasmoid.configuration[modelData.prop] ? 1 : 0.4
                             }
                         }
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: root[modelData.prop] = !root[modelData.prop]
+                            onClicked: Plasmoid.configuration[modelData.prop] = !Plasmoid.configuration[modelData.prop]
                         }
                     }
                 }
@@ -275,15 +281,13 @@ PlasmoidItem {
         ScrollView {
             id: scrollView
             anchors.fill: parent
-            // The ring row and stats row have no background of their own
-            // (unlike the graph/card Rectangles), so without this they show
-            // through to the Plasma popup dialog's own theme background --
-            // on a light color scheme that made the ring labels/stats text
-            // (colors picked for a dark backdrop) hard to read. Giving the
-            // whole popup the same dark background the rest of the widget
-            // already uses keeps it consistent regardless of the user's
-            // Plasma theme.
-            background: Rectangle { color: "#101418" }
+            // No explicit background here on purpose: the ring row and
+            // stats row are meant to sit on Plasma's own popup background,
+            // which follows the system light/dark color scheme (the graph
+            // and cards below have their own fixed dark Rectangle, by
+            // design, like nvtop's terminal panels). Ring.qml's text and
+            // the stats Row's text use PlasmaCore.Theme colors so they stay
+            // legible against either.
             // ColumnLayout { width: parent.width } inside a ScrollView is a
             // classic trap: "parent" here is the ScrollView's internal
             // Flickable, whose own width can settle smaller than the
@@ -297,6 +301,27 @@ PlasmoidItem {
             ColumnLayout {
                 width: scrollView.availableWidth
                 spacing: 8
+
+                // pin (keep popup open) + configure, top-right, same pattern
+                // as e.g. org.kde.desktopcontainment's FolderViewLayer.qml
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 2
+
+                    Item { Layout.fillWidth: true }
+
+                    PlasmaComponents.ToolButton {
+                        checkable: true
+                        icon.name: "window-pin"
+                        onCheckedChanged: root.hideOnWindowDeactivate = !checked
+                        PlasmaComponents.ToolTip { text: "Keep open" }
+                    }
+                    PlasmaComponents.ToolButton {
+                        icon.name: "configure"
+                        onClicked: Plasmoid.internalAction("configure").trigger()
+                        PlasmaComponents.ToolTip { text: "Configure…" }
+                    }
+                }
 
                 // 5 ring gauges in widget order: GPU MEM TMP PWR CPU (click to toggle line).
                 // Not Layout.fillWidth: the row is only as wide as its 5 fixed-size
@@ -335,12 +360,12 @@ PlasmoidItem {
                                 ringColor: modelData.color
                                 valueText: modelData.text
                                 label: modelData.label
-                                active: root[modelData.key]
+                                active: Plasmoid.configuration[modelData.key]
                             }
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: root[modelData.key] = !root[modelData.key]
+                                onClicked: Plasmoid.configuration[modelData.key] = !Plasmoid.configuration[modelData.key]
                             }
                         }
                     }
@@ -361,15 +386,15 @@ PlasmoidItem {
                     Text {
                         text: "MEM " + (root.gpu.mem_used !== null && root.gpu.mem_total
                               ? root.mb(root.gpu.mem_used) + "/" + root.mb(root.gpu.mem_total) : "N/A")
-                        color: "#8a9199"; font.pointSize: 8
+                        color: root.mutedTextColor; font.pointSize: 8
                     }
                     Text {
                         text: "sys " + root.bytes(root.sys.ram_used) + "/" + root.bytes(root.sys.ram_total)
-                        color: "#8a9199"; font.pointSize: 8
+                        color: root.mutedTextColor; font.pointSize: 8
                     }
                     Text {
                         text: "load " + root.sys.load1.toFixed(2)
-                        color: "#8a9199"; font.pointSize: 8
+                        color: root.mutedTextColor; font.pointSize: 8
                     }
                 }
 
@@ -383,11 +408,11 @@ PlasmoidItem {
                     Item {
                         anchors.fill: parent
                         anchors.margins: 2
-                        Sparkline { anchors.fill: parent; visible: root.showGpu; values: root.histUtil; revision: root.revision; maximum: 100; lineColor: "#4d9fff"; capacity: root.windowSize }
-                        Sparkline { anchors.fill: parent; visible: root.showMem; values: root.histMem; revision: root.revision; maximum: 100; lineColor: "#e8c33a"; capacity: root.windowSize }
-                        Sparkline { anchors.fill: parent; visible: root.showTemp; values: root.histTemp; revision: root.revision; maximum: root.tempMax; lineColor: "#b07fe8"; capacity: root.windowSize }
-                        Sparkline { anchors.fill: parent; visible: root.showPower; values: root.histPower; revision: root.revision; maximum: 100; lineColor: "#3ddc84"; capacity: root.windowSize }
-                        Sparkline { anchors.fill: parent; visible: root.showCpu; values: root.histCpu; revision: root.revision; maximum: 100; lineColor: "#ff8c42"; capacity: root.windowSize }
+                        Sparkline { anchors.fill: parent; visible: Plasmoid.configuration.showGpu; values: root.histUtil; revision: root.revision; maximum: 100; lineColor: "#4d9fff"; capacity: root.windowSize }
+                        Sparkline { anchors.fill: parent; visible: Plasmoid.configuration.showMem; values: root.histMem; revision: root.revision; maximum: 100; lineColor: "#e8c33a"; capacity: root.windowSize }
+                        Sparkline { anchors.fill: parent; visible: Plasmoid.configuration.showTemp; values: root.histTemp; revision: root.revision; maximum: root.tempMax; lineColor: "#b07fe8"; capacity: root.windowSize }
+                        Sparkline { anchors.fill: parent; visible: Plasmoid.configuration.showPower; values: root.histPower; revision: root.revision; maximum: 100; lineColor: "#3ddc84"; capacity: root.windowSize }
+                        Sparkline { anchors.fill: parent; visible: Plasmoid.configuration.showCpu; values: root.histCpu; revision: root.revision; maximum: 100; lineColor: "#ff8c42"; capacity: root.windowSize }
                     }
                 }
 

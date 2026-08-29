@@ -1,4 +1,5 @@
 import QtQuick
+import org.kde.kirigami as Kirigami
 
 // Reusable progress ring gauge, drawn on Canvas. Extracted from the 5x
 // duplicated GPU/MEM/TMP/PWR/CPU blocks that used to live inline in
@@ -12,6 +13,13 @@ Item {
     property string label: ""
     property bool active: true
     property real trackWidth: 5
+    // This ring sits on Plasma's own popup background (follows the system
+    // light/dark color scheme), so its text needs to track theme colors --
+    // unlike the compact widget/cards, which have their own fixed dark
+    // background and can use fixed colors on purpose.
+    property color valueColor: Kirigami.Theme.textColor
+    property color labelColor: Qt.rgba(Kirigami.Theme.textColor.r,
+        Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.65)
 
     opacity: active ? 1 : 0.3
 
@@ -33,11 +41,11 @@ Item {
             ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2)
             ctx.stroke()
 
-            ctx.fillStyle = "#c8ccd2"; ctx.font = "bold 12px sans-serif"
+            ctx.fillStyle = ring.valueColor; ctx.font = "bold 12px sans-serif"
             ctx.textAlign = "center"; ctx.textBaseline = "middle"
             ctx.fillText(ring.valueText, cx, cy - 3)
 
-            ctx.font = "7px sans-serif"; ctx.fillStyle = "#8a9199"
+            ctx.font = "7px sans-serif"; ctx.fillStyle = ring.labelColor
             ctx.fillText(ring.label, cx, cy + 10)
         }
     }
@@ -49,6 +57,8 @@ Item {
     onValueTextChanged: canvas.requestPaint()
     onRingColorChanged: canvas.requestPaint()
     onLabelChanged: canvas.requestPaint()
+    onValueColorChanged: canvas.requestPaint()
+    onLabelColorChanged: canvas.requestPaint()
     onWidthChanged: canvas.requestPaint()
     onHeightChanged: canvas.requestPaint()
 }
