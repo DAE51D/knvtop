@@ -426,18 +426,17 @@ PlasmoidItem {
             Repeater {
                 model: root.llama.filter(function(l) { return l.model !== null && l.model !== undefined && l.model !== "" })
                 delegate: Rectangle {
-                    id: llamaCard
                     Layout.fillWidth: true
                     color: "#1a1f25"
                     radius: 3
-                    Column {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.top: parent.top
+                    height: llamaCol.implicitHeight + 16
+                    ColumnLayout {
+                        id: llamaCol
+                        anchors.fill: parent
                         anchors.margins: 8
                         spacing: 3
                         Text {
-                            width: llamaCard.width - 16
+                            Layout.fillWidth: true
                             text: "llama.cpp  pid " + modelData.pid
                                  + (modelData.alias ? "  [" + modelData.alias + "]" : "")
                                  + (modelData.port ? "  :port " + modelData.port : "")
@@ -446,7 +445,7 @@ PlasmoidItem {
                             wrapMode: Text.Wrap
                         }
                         Text {
-                            width: llamaCard.width - 16
+                            Layout.fillWidth: true
                             text: "ngl: " + (modelData.ngl || "N/A")
                                  + "   ctx: " + (modelData.ctx || "N/A")
                                  + "   parallel: " + (modelData.parallel || "N/A")
@@ -456,7 +455,7 @@ PlasmoidItem {
                             wrapMode: Text.Wrap
                         }
                         Text {
-                            width: llamaCard.width - 16
+                            Layout.fillWidth: true
                             text: modelData.cmdline
                             color: "#6a7078"; font.pointSize: 7; font.family: "monospace"
                             wrapMode: Text.Wrap
@@ -469,24 +468,23 @@ PlasmoidItem {
             Repeater {
                 model: root.ollamaModels.length > 0 ? root.ollama : []
                 delegate: Rectangle {
-                    id: ollamaCard
                     Layout.fillWidth: true
                     color: "#1a1f25"
                     radius: 3
-                    Column {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.top: parent.top
+                    height: ollamaCol.implicitHeight + 16
+                    ColumnLayout {
+                        id: ollamaCol
+                        anchors.fill: parent
                         anchors.margins: 8
                         spacing: 3
                         Text {
-                            width: ollamaCard.width - 16
+                            Layout.fillWidth: true
                             text: "ollama  pid " + modelData.pid
                                  + (modelData.subcmd ? "  " + modelData.subcmd : "")
                             color: "#e8c33a"; font.bold: true; font.pointSize: 9
                         }
                         Text {
-                            width: ollamaCard.width - 16
+                            Layout.fillWidth: true
                             text: modelData.cmdline
                             color: "#6a7078"; font.pointSize: 7; font.family: "monospace"
                             wrapMode: Text.Wrap
@@ -512,24 +510,23 @@ PlasmoidItem {
             Repeater {
                 model: root.vllm.filter(function(v) { return v.model !== null && v.model !== undefined && v.model !== "" })
                 delegate: Rectangle {
-                    id: vllmCard
                     Layout.fillWidth: true
                     color: "#1a1f25"
                     radius: 3
-                    Column {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.top: parent.top
+                    height: vllmCol.implicitHeight + 16
+                    ColumnLayout {
+                        id: vllmCol
+                        anchors.fill: parent
                         anchors.margins: 8
                         spacing: 3
                         Text {
-                            width: vllmCard.width - 16
+                            Layout.fillWidth: true
                             text: "vllm  pid " + modelData.pid
                                  + (modelData.model ? "  " + modelData.model : "")
                             color: "#b07fe8"; font.bold: true; font.pointSize: 9
                         }
                         Text {
-                            width: vllmCard.width - 16
+                            Layout.fillWidth: true
                             text: modelData.cmdline
                             color: "#6a7078"; font.pointSize: 7; font.family: "monospace"
                             wrapMode: Text.Wrap
