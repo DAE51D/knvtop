@@ -15,20 +15,29 @@ permission mode).
       README.md) instead of a blank/broken-looking popup. This matters for
       a store listing since installing the plasmoid alone doesn't install
       the backend service.
-- [ ] `.gitignore`/package hygiene check — make sure `.ruff_cache/`,
-      `__pycache__/`, and any other dev-only cruft won't end up inside the
-      distributed `.plasmoid` zip
-- [ ] Packaging script that builds `knvtop.plasmoid` (a zip of
-      `com.daevid.knvtop/`'s contents, metadata.json at the zip root) —
-      the file format store.kde.org and Plasma's "Install from local file"
-      both expect
-- [ ] Test-install the built `.plasmoid` via `kpackagetool6` (or the
+- [x] `.gitignore`/package hygiene check — `git archive` only includes
+      tracked files, so `.ruff_cache/`/`__pycache__/`/etc. can't end up in
+      the package without also needing to be committed first
+- [x] Packaging script (`scripts/build-plasmoid.sh`) that builds
+      `knvtop-<version>.plasmoid` (a zip of `com.daevid.knvtop/`'s
+      contents, metadata.json at the zip root) — verified clean, 14 files,
+      no dev cruft
+- [x] Test-install the built `.plasmoid` via `kpackagetool6` (or the
       equivalent local install path) to confirm the zip is structured
-      correctly before it ever goes near the Store
-- [ ] Draft store listing copy (title, tagline, longer description, tags/
-      category) as a doc you can paste into the submission form as-is
-- [ ] Screenshots for the listing (compact panel view + expanded popup) —
-      can capture these via spectacle same as we've been doing all session
+      correctly before it ever goes near the Store — `kpackagetool6
+      --type Plasma/Applet --upgrade knvtop-1.0.0.plasmoid` installed
+      cleanly, files match the repo exactly, plasmashell reloaded with no
+      errors
+- [x] Draft store listing copy (title, tagline, longer description, tags/
+      category) — see `STORE_LISTING.md`. Also flags a real blocker: the
+      repo lives on a private LAN-only Gitea, and a public listing needs a
+      publicly-reachable source link (see that file's note)
+- [~] Screenshots for the listing — `screenshots/compact-panel.png`
+      captured (safe, no interaction needed). The two popup screenshots
+      (LLM cards view + full process view) need the widget clicked open;
+      given tonight's earlier close call with synthetic clicks, easier and
+      safer for you to grab those two yourself — you've already sent great
+      examples of both in this conversation
 
 ## Needs your KDE Identity login (can't be done from here)
 
