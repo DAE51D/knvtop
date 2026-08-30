@@ -89,6 +89,11 @@ PlasmoidItem {
     property int revision: 0
 
     property bool pollerAlive: false
+    property int failedPollCount: 0
+    // A few consecutive failures (not one) before showing the setup panel
+    // -- avoids a flash of "not installed" during normal plasmashell
+    // startup while the very first D-Bus call is still in flight.
+    readonly property bool needsSetup: failedPollCount >= 3
 
     readonly property int tempMax: 100
     readonly property double tempFloor: 30
@@ -182,12 +187,18 @@ PlasmoidItem {
                     var s = JSON.parse(reply.values[0]);
                     pushSample(s);
                     pollerAlive = true;
+                    failedPollCount = 0;
+                } else {
+                    pollerAlive = false;
+                    failedPollCount++;
                 }
             } catch (e) {
                 pollerAlive = false;
+                failedPollCount++;
             }
         }, () => {
             pollerAlive = false;
+            failedPollCount++;
         });
     }
 
@@ -384,6 +395,66 @@ PlasmoidItem {
                     }
                 }
 
+                // Shown instead of the normal content when the D-Bus
+                // backend service isn't reachable -- installing the
+                // plasmoid alone doesn't install/start it (a declarative
+                // QML applet can't launch its own external process), so
+                // without this the popup would otherwise just look
+                // blank/broken on a fresh install.
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    visible: root.needsSetup
+                    spacing: 6
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Backend service not running"
+                        color: Kirigami.Theme.negativeTextColor
+                        font.bold: true
+                        font.pointSize: 10
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: "knvtop's D-Bus backend isn't reachable. From the repo, run these once to install and start it:"
+                        color: Kirigami.Theme.textColor
+                        font.pointSize: 8
+                        wrapMode: Text.Wrap
+                    }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 4
+                        color: "#101418"
+                        radius: 3
+                        implicitHeight: setupCmds.implicitHeight + 16
+                        Text {
+                            id: setupCmds
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            text: "cp -r com.daevid.knvtop ~/.local/share/plasma/plasmoids/\n"
+                                + "cp service/knvtop.service ~/.config/systemd/user/\n"
+                                + "systemctl --user daemon-reload\n"
+                                + "systemctl --user enable --now knvtop.service"
+                            color: "#c8ccd2"
+                            font.pointSize: 8
+                            font.family: "monospace"
+                            wrapMode: Text.Wrap
+                        }
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 4
+                        text: "See the project README for the full setup, including the note on cross-user GPU stats (CAP_SYS_PTRACE)."
+                        color: root.mutedTextColor
+                        font.pointSize: 8
+                        wrapMode: Text.Wrap
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    visible: !root.needsSetup
+                    spacing: 8
+
                 // 5 ring gauges in widget order: GPU MEM TMP PWR CPU (click to toggle line).
                 // Not Layout.fillWidth: the row is only as wide as its 5 fixed-size
                 // rings need — Qt.AlignHCenter centers that within the popup instead
@@ -544,6 +615,7 @@ PlasmoidItem {
                              + "   quant: " + (modelData.quantization || "N/A")
                              + "   vram: " + (modelData.size_vram ? (modelData.size_vram / 1073741824).toFixed(1) + " GiB" : "N/A")
                     }
+                }
                 }
             }
         }
