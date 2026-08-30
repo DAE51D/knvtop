@@ -10,6 +10,26 @@ Built for a single AMD APU with unified memory (Strix Halo / Radeon 8060S),
 but the process-discovery and GPU-telemetry code is generic AMDGPU/libdrm,
 not tied to that specific hardware.
 
+## Screenshots
+
+**Compact panel view** — the 5-line graph as it sits in the taskbar:
+
+![Compact panel view](screenshots/compact-panel.png)
+
+**Hover tooltip** — a quick summary without opening the full popup:
+
+![Hover tooltip](screenshots/tooltip.png)
+
+**Expanded popup** — ring gauges, graph, and per-process cards (llama.cpp
+flags table, ollama, or the full generic process list):
+
+![Expanded popup](screenshots/popup-expanded.png)
+
+**Config page** — default line visibility plus the AI/LLM-only/user/type
+process filters:
+
+![Config page](screenshots/config-page.png)
+
 ## Install
 
 1. Copy the plasmoid into place:

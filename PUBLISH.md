@@ -35,12 +35,10 @@ permission mode).
       the other direction: Gitea stays authoritative, auto-pushes to
       GitHub on every commit + an 8h fallback interval). Verified: both
       remotes' HEAD commits match exactly.
-- [~] Screenshots for the listing — `screenshots/compact-panel.png`
-      captured (safe, no interaction needed). The two popup screenshots
-      (LLM cards view + full process view) need the widget clicked open;
-      given tonight's earlier close call with synthetic clicks, easier and
-      safer for you to grab those two yourself — you've already sent great
-      examples of both in this conversation
+- [x] Screenshots for the listing — `compact-panel.png` captured directly;
+      `tooltip.png`/`popup-expanded.png`/`config-page.png` supplied by the
+      owner (needed the widget clicked open, safer for them to grab than
+      another synthetic-click attempt). All four embedded in README.md.
 
 ## Needs your KDE Identity login (can't be done from here)
 

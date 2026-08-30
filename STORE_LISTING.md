@@ -59,7 +59,8 @@ source-link field should point at.
 
 ## Screenshots to attach
 
-See `screenshots/` in the repo root (captured this session):
+See `screenshots/` in the repo root (also embedded in README.md):
 - `compact-panel.png` — the panel widget as it sits in the taskbar
-- `popup-llm-view.png` — expanded popup, AI/LLM cards view
-- `popup-generic-view.png` — expanded popup, full process list view
+- `tooltip.png` — the hover tooltip
+- `popup-expanded.png` — expanded popup, AI/LLM cards view
+- `config-page.png` — the config page (line defaults + process filters)
