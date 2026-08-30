@@ -29,9 +29,12 @@ permission mode).
       cleanly, files match the repo exactly, plasmashell reloaded with no
       errors
 - [x] Draft store listing copy (title, tagline, longer description, tags/
-      category) — see `STORE_LISTING.md`. Also flags a real blocker: the
-      repo lives on a private LAN-only Gitea, and a public listing needs a
-      publicly-reachable source link (see that file's note)
+      category) — see `STORE_LISTING.md`
+- [x] Public source link — created https://github.com/DAE51D/knvtop and
+      set up a Gitea push mirror (same pattern as `strix-halo-power`, just
+      the other direction: Gitea stays authoritative, auto-pushes to
+      GitHub on every commit + an 8h fallback interval). Verified: both
+      remotes' HEAD commits match exactly.
 - [~] Screenshots for the listing — `screenshots/compact-panel.png`
       captured (safe, no interaction needed). The two popup screenshots
       (LLM cards view + full process view) need the widget clicked open;

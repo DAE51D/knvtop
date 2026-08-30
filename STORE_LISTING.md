@@ -47,17 +47,15 @@ systemd; the widget shows setup instructions directly in the popup if
 it isn't running yet. Full instructions in the README.
 
 Source, issue tracker, and full documentation:
-gitea.home.lan:DAE51D/knvtop.git (or wherever this ends up mirrored
-publicly, if the owner sets that up separately — see note below)
+https://github.com/DAE51D/knvtop
 
 ## Note for whoever submits this
 
-The repo currently lives on a private, LAN-only Gitea instance
-(`gitea.home.lan`). **A public store listing needs a publicly-reachable
-source link** (GitHub/GitLab/Codeberg mirror, or at minimum a way for
-users to get the `.plasmoid`/README without your LAN). Decide on that
-before submitting — the Store listing form usually asks for a project
-homepage/source URL.
+Resolved: Gitea (`gitea.home.lan`, LAN-only) stays the working source of
+truth; a push mirror auto-syncs every commit (plus an 8h fallback
+interval, same pattern as `strix-halo-power`) to
+https://github.com/DAE51D/knvtop, which is what the store listing's
+source-link field should point at.
 
 ## Screenshots to attach
 
