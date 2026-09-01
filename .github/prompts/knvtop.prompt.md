@@ -497,6 +497,43 @@ the nvtop source. Full detail: session memory `knvtop-research.md`.
   top of (not filter down from) the generic scan, keyed by pid, so a
   recognized process that doesn't hold a DRM fd still shows up.
 
+## NPU research (2026-08-31/09-01, not implemented -- owner chose "skip for now")
+
+The EVO-X2's NPU (`RyzenAI-npu5`, `amdxdna` driver, fw 1.1.2.65) was
+investigated for a ring+line graph pair matching the GPU ones. Findings,
+so this doesn't need re-deriving from scratch later:
+
+- `amd-smi list` doesn't see the NPU at all -- GPU (`0000:c6:00.0`) only.
+- No hwmon entry exists for it (checked every `/sys/class/hwmon/hwmon*`
+  by `name`, same resolution method used for the GPU) -- no temp/power
+  sensor exposed that way.
+- `xrt-smi` (installed via `libxrt-utils-npu`, not present by default --
+  only the runtime libs were) is the only real telemetry source:
+  `xrt-smi examine -r aie-partitions -f JSON -o <file>` gives per-process
+  hardware-context info -- PID, submissions/completions counts,
+  migrations, errors, and `gops`/`egops`/`fps`/`latency` fields that are
+  `"N/A"` until a workload is actively running. **No busy-percent field
+  exists at all** -- unlike amdgpu's `drm-engine-*` ns counters, this is
+  submission/completion *counts*, not cumulative time, so there's no
+  clean way to derive a 0-100% figure the way GPU/CPU% work here.
+- `xrt-smi` needs **root**, even though `/dev/accel/accel0` is
+  `root:render` and `dae51d` IS in the `render` group -- it does an
+  internal mmap of a PCI BAR resource that fails with `mmap(...) failed
+  (err=-11): Resource temporarily unavailable` unless run via `sudo`,
+  regardless of device-node group permissions. This is a genuine
+  privilege gate, not a transient fluke (reproduced both with and
+  without sudo, consistently).
+- Power/electrical query specifically errors:
+  `DRM_IOCTL_AMDXDNA_GET_INFO IOCTL failed (err=-22): Invalid argument`
+  -- this firmware/driver combination doesn't support that query yet.
+- Conclusion given to the owner: a ring gauge showing genuine NPU
+  utilization isn't achievable with what this driver/firmware exposes at
+  the OS level right now (young stack, actively developed upstream).
+  Offered three honest options (submission-rate-as-a-number instead of a
+  %, simple busy/idle indicator, or skip) -- owner chose skip. Revisit
+  once `amdxdna`/`xrt-smi` exposes real utilization/power telemetry, or
+  if `amd-smi` gains NPU support.
+
 ## TODO
 
 - [x] Phase 1: plasmoid scaffold (`metadata.json` + `main.qml`), verify loads
