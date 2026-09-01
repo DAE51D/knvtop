@@ -12,10 +12,6 @@ not tied to that specific hardware.
 
 ## Screenshots
 
-**Compact panel view** — the 5-line graph as it sits in the taskbar:
-
-![Compact panel view](screenshots/compact-panel.png)
-
 **Hover tooltip** — a quick summary without opening the full popup:
 
 ![Hover tooltip](screenshots/tooltip.png)
