@@ -10,6 +10,10 @@ Built for a single AMD APU with unified memory (Strix Halo / Radeon 8060S),
 but the process-discovery and GPU-telemetry code is generic AMDGPU/libdrm,
 not tied to that specific hardware.
 
+Also available on the [KDE Store](https://store.kde.org/p/2370069/) —
+grab the `.plasmoid` there instead of building one yourself if you'd
+rather not clone the repo.
+
 ## Screenshots
 
 **Hover tooltip** — a quick summary without opening the full popup:
