@@ -5,7 +5,7 @@
         "Name": "knvtop",
         "Description": "GPU + LLM inference monitor (nvtop-style graph, per-process cards, filterable by user/type)",
         "Icon": "video-display",
-        "Version": "1.0.0",
+        "Version": "1.1.0",
         "Authors": [
             {
                 "Name": "Daevid Vincent",

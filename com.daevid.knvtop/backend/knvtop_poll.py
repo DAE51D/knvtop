@@ -76,6 +76,45 @@ def _amd_smi():
         return None
 
 
+def _nvidia_smi():
+    # nvidia-smi CSV, noheader/nounits: util %, VRAM MiB, VRAM MiB, temp C,
+    # power W, power limit W. "N/A" for any unavailable field (e.g. power
+    # limit on some cards) -- treat as None, same convention as _amd_smi().
+    try:
+        out = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=utilization.gpu,memory.used,memory.total,"
+                "temperature.gpu,power.draw,power.limit",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        ).stdout
+        fields = [f.strip() for f in out.strip().split(",")]
+        if len(fields) < 6:
+            return None
+
+        def num(s):
+            try:
+                v = float(s)
+            except ValueError:
+                return None
+            return int(v) if v == int(v) else v
+
+        return {
+            "util": num(fields[0]),
+            "mem_used": num(fields[1]),
+            "mem_total": num(fields[2]),
+            "temp": num(fields[3]),
+            "power_w": num(fields[4]),
+            "power_cap_w": num(fields[5]),
+        }
+    except Exception:
+        return None
+
+
 def _amdgpu_hwmon():
     import glob
 
@@ -125,6 +164,8 @@ def _sysfs_gpu():
 
 def gpu_sample():
     g = _amd_smi()
+    if g is None:
+        g = _nvidia_smi()
     if g is None:
         g = _sysfs_gpu()
     if g.get("power_cap_w") is None:
@@ -366,14 +407,16 @@ def _fdinfo_engines(pid):
                 continue
             if k.startswith("drm-engine-"):
                 try:
-                    engines[k[len("drm-engine-"):]] = engines.get(
-                        k[len("drm-engine-"):], 0) + int(v[0])
+                    engines[k[len("drm-engine-") :]] = engines.get(
+                        k[len("drm-engine-") :], 0
+                    ) + int(v[0])
                 except ValueError:
                     pass
             elif k.startswith("drm-memory-"):
                 try:
-                    mem[k[len("drm-memory-"):]] = mem.get(
-                        k[len("drm-memory-"):], 0) + int(v[0])
+                    mem[k[len("drm-memory-") :]] = mem.get(
+                        k[len("drm-memory-") :], 0
+                    ) + int(v[0])
                 except ValueError:
                     pass
     return {"engines": engines, "mem": mem} if found else None
@@ -494,20 +537,22 @@ def gpu_proc_sample():
         # long descriptive blob for `ps` display, which makes a poor "name".
         st = _proc_status(pid_s, {"Name", "VmRSS"})
         name = st.get("Name") or os.path.basename(argv[0])
-        procs.append({
-            "pid": int(pid_s),
-            "user": _username(pid_s) or "?",
-            "name": name,
-            "cmdline": " ".join(argv),
-            "argv": argv,
-            "type": stats["types"],
-            "gpu_pct": stats["gpu_pct"],
-            "vram_kb": stats["vram_kb"],
-            "cpu_pct": _proc_cpu_pct(pid_s),
-            "rss_kb": int(st["VmRSS"].split()[0])
-            if "VmRSS" in st and st["VmRSS"].split()
-            else None,
-        })
+        procs.append(
+            {
+                "pid": int(pid_s),
+                "user": _username(pid_s) or "?",
+                "name": name,
+                "cmdline": " ".join(argv),
+                "argv": argv,
+                "type": stats["types"],
+                "gpu_pct": stats["gpu_pct"],
+                "vram_kb": stats["vram_kb"],
+                "cpu_pct": _proc_cpu_pct(pid_s),
+                "rss_kb": int(st["VmRSS"].split()[0])
+                if "VmRSS" in st and st["VmRSS"].split()
+                else None,
+            }
+        )
     # Drop tracking state for pids that no longer exist so this dict
     # doesn't grow without bound across a long-running poller session.
     for tracked in list(_prev_gpu_engines.keys()):
