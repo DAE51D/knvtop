@@ -78,10 +78,10 @@ Rectangle {
             Layout.fillWidth: true
             visible: card.gpuPct !== null || card.vramKb !== null
                   || card.cpuPct !== null || card.hostMemKb !== null
-            text: "GPU: " + card.fmtPct(card.gpuPct)
-                + "   GPU MEM: " + card.fmtMiB(card.vramKb)
+            text: "GPU (proc): " + card.fmtPct(card.gpuPct)
+                + "   GPU MEM (proc): " + card.fmtMiB(card.vramKb)
                 + "   CPU: " + card.fmtPct(card.cpuPct)
-                + "   Host MEM: " + card.fmtMiB(card.hostMemKb)
+                + "   RSS: " + card.fmtMiB(card.hostMemKb)
             color: "#aeb4bb"
             font.pointSize: 8
             // NOT wrapped, deliberately: this line's numbers change every

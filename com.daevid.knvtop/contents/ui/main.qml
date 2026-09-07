@@ -466,10 +466,10 @@ PlasmoidItem {
 
                     Repeater {
                         model: [
-                            { key: "showGpu", label: "GPU", color: "#4d9fff",
+                            { key: "showGpu", label: "GPU SYS", color: "#4d9fff",
                               ratio: (root.gpu.util || 0) / 100,
                               text: root.fmt(root.gpu.util, "%") },
-                            { key: "showMem", label: "MEM", color: "#e8c33a",
+                            { key: "showMem", label: "GTT SYS", color: "#e8c33a",
                               ratio: (root.gpu.mem_used !== null && root.gpu.mem_total)
                                      ? Math.min(1, root.gpu.mem_used / root.gpu.mem_total) : 0,
                               text: (root.gpu.mem_used !== null && root.gpu.mem_total)
@@ -521,7 +521,7 @@ PlasmoidItem {
                     // live value is what pops out.
                     Text {
                         textFormat: Text.StyledText
-                        text: "MEM " + (root.gpu.mem_used !== null && root.gpu.mem_total
+                        text: "GTT " + (root.gpu.mem_used !== null && root.gpu.mem_total
                               ? "<b>" + (root.gpu.mem_used / 1024).toFixed(1) + "</b> GiB/"
                                 + (root.gpu.mem_total / 1024).toFixed(1) + " GiB"
                               : "N/A")

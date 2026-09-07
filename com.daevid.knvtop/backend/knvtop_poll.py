@@ -389,6 +389,7 @@ def _fdinfo_engines(pid):
     except OSError:
         return None
     engines, mem, found = {}, {}, False
+    seen_clients = set()
     for fd in fds:
         try:
             with open(f"{fd_dir}/{fd}") as f:
@@ -397,6 +398,22 @@ def _fdinfo_engines(pid):
             continue
         if "drm-driver" not in content:
             continue
+        # A process can have multiple DRM fds referring to the same client.
+        # fdinfo reports the client's complete allocation/counters on each
+        # such fd, so summing them would double-count memory and engine time
+        # (llama-server commonly has two amdgpu fds).  Deduplicate by the
+        # kernel DRM client id; fall back to the fd when older drivers omit it.
+        client_id = next(
+            (
+                line.split(":", 1)[1].strip()
+                for line in content.splitlines()
+                if line.startswith("drm-client-id:")
+            ),
+            fd,
+        )
+        if client_id in seen_clients:
+            continue
+        seen_clients.add(client_id)
         found = True
         for line in content.splitlines():
             if ":" not in line:
