@@ -21,6 +21,7 @@ Missing values are null (QML renders N/A).
 import json
 import os
 import pwd
+import re
 import subprocess
 import sys
 import time
@@ -322,8 +323,10 @@ def llm_sample():
         # these cards too, not just the generic gpu_procs list.
         entry["type"] = gpu_stats["types"] if gpu_stats else []
         entry["user"] = _username(pid) or "?"
+        entry["unit"] = owning_unit(pid)
         if exe.startswith("llama"):
-            entry["model"] = _find("--model", argv)
+            # llama-server/llama-cli use --model; llama-bench uses -m
+            entry["model"] = _find("--model", argv) or _find("-m", argv)
             entry["ngl"] = _find("--n-gpu-layers", argv)
             entry["ctx"] = _find("--ctx-size", argv)
             entry["parallel"] = _find("--parallel", argv)
@@ -469,6 +472,49 @@ def _username(pid):
     return None
 
 
+# Units whose restart would take the desktop session or this monitor down.
+_UNIT_DENY = re.compile(
+    r"^(sddm|gdm|lightdm|display-manager|systemd-logind|dbus|knvtop)\b"
+    r"|kwin|^user@|^user-runtime-dir@|^session-"
+)
+_UNIT_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9:_.@\-]*\.service$")
+
+
+def owning_unit(pid):
+    """The systemd *service* that owns pid, as "system:<name>" or
+    "user:<name>", or None when pid isn't in a restartable service (desktop
+    app scopes, another user's session units, anything on the deny list).
+
+    Read from /proc/<pid>/cgroup, which is world-readable, so this needs no
+    privileges. The name is validated so it is safe to hand to systemctl.
+    """
+    try:
+        with open(f"/proc/{pid}/cgroup") as f:
+            path = next(
+                (line.split(":", 2)[2].strip() for line in f if line.startswith("0::")),
+                "",
+            )
+    except (OSError, IndexError):
+        return None
+    comps = [c for c in path.split("/") if c]
+    scope = name = None
+    if comps and comps[0] == "system.slice":
+        scope = "system"
+        name = next((c for c in comps[1:] if c.endswith(".service")), None)
+    else:
+        # .../user@<uid>.service/<slice>/<unit>.service -- the unit is the
+        # first .service *after* this user's manager, and only our own
+        # user's units are ours to restart.
+        manager = f"user@{os.getuid()}.service"
+        if manager in comps:
+            scope = "user"
+            rest = comps[comps.index(manager) + 1 :]
+            name = next((c for c in rest if c.endswith(".service")), None)
+    if not name or not _UNIT_NAME.match(name) or _UNIT_DENY.search(name):
+        return None
+    return f"{scope}:{name}"
+
+
 def _fdinfo_gpu_stats(pid):
     """{'gpu_pct': float|None, 'vram_kb': int|None, 'types': [...]} for one
     pid, or None if it has no open DRM client fd (not a GPU client).
@@ -558,6 +604,7 @@ def gpu_proc_sample():
             {
                 "pid": int(pid_s),
                 "user": _username(pid_s) or "?",
+                "unit": owning_unit(pid_s),
                 "name": name,
                 "cmdline": " ".join(argv),
                 "argv": argv,

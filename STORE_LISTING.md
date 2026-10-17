@@ -45,6 +45,10 @@ GPU%/VRAM/CPU%/memory. Full process view (one checkbox away) shows every
 GPU-touching process on the system, nvtop-style, filterable by user and
 by engine type (Graphic/Compute/Both).
 
+Each process card has a two-click kill button, and a restart button for
+processes running inside a systemd service (handy for reloading a
+llama.cpp config).
+
 Built for AMD/AMDGPU: reads the same /proc/<pid>/fdinfo data nvtop
 itself uses, plus amd-smi/sysfs for system-wide GPU stats. Tested on an
 AMD Strix Halo APU (unified memory) but the process-discovery code isn't
@@ -58,6 +62,26 @@ it isn't running yet. Full instructions in the README.
 Source, issue tracker, and full documentation:
 https://github.com/DAE51D/knvtop
 ---
+
+## Changelog (paste into the "Changelog" field when uploading a release)
+
+1.2.0:
+
+---
+- New: kill button on every process card (two-click confirm; SIGTERM, then
+  SIGKILL if the process doesn't exit). Killing another user's process needs
+  passwordless sudo for the service's user.
+- New: restart button on cards whose process runs inside a systemd service
+  (runs `systemctl restart` on that service). Session-critical units are
+  always refused.
+- New: processes show their owning user on the card.
+- Fix: llama-bench cards now show their model (it uses `-m`, not `--model`).
+- IMPORTANT: the backend service must be restarted after updating
+  (`systemctl --user restart knvtop.service`) -- kill/restart are new
+  service endpoints.
+---
+
+(1.1.1 fixed the GPU vs process memory statistics; 1.1.0 added NVIDIA support.)
 
 ## Note for whoever submits this
 

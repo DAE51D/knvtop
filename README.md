@@ -65,6 +65,45 @@ process filters:
   `drm-engine-*` nanosecond counters, delta'd between samples, give
   per-process GPU%; `drm-memory-*` gives VRAM.
 
+### Killing a process
+
+Each process card has a kill button. The first click arms it ("Kill? Click",
+3 seconds); the second click sends SIGTERM, escalating to SIGKILL if the
+process is still alive after 3 seconds. Processes owned by your own user are
+signaled directly; processes owned by anyone else (e.g. an `aistack` LLM
+service account) go through `sudo -n kill`, so the button only appears for
+them when passwordless sudo works for the service's user. From a shell you
+can do the same thing the widget does:
+
+```bash
+busctl --user call com.daevid.knvtop /com/daevid/knvtop/kill/<pid> com.daevid.knvtop.Process Kill
+# or, with the PID as an argument:
+busctl --user call com.daevid.knvtop /com/daevid/knvtop com.daevid.knvtop.Process Kill s <pid>
+```
+
+Both return `(bool ok, string message)`; PID 1 and the service itself are
+refused.
+
+### Restarting a service
+
+Cards for processes that run inside a **systemd service** (e.g. `llama-server`,
+`ollama`) also get a restart button — handy for reloading config files. It
+uses the same two-click confirm, then runs `systemctl restart --no-block` on
+the service that owns the process (the tooltip names it). The restart is
+queued and returns immediately, so a slow start (a model warm-up) just means
+the card reappears later. System services need the same passwordless sudo as
+killing another user's process; your own user services don't. Processes that
+aren't in a service (desktop apps, anything started from a shell) get no
+restart button, and session-critical units (kwin, display manager, logind,
+`user@`, dbus, knvtop itself) are always refused. From a shell:
+
+```bash
+busctl --user call com.daevid.knvtop /com/daevid/knvtop/restart/<pid> com.daevid.knvtop.Process Restart
+```
+
+The service works out the unit from the PID itself (via `/proc/<pid>/cgroup`);
+it never accepts a unit name from the caller.
+
 ### Note: knvtop's MEM line is NOT nvtop's MEM bar
 
 nvtop's GPU memory bar shows VRAM + GTT *heap* size — a few GB on this

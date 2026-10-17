@@ -25,7 +25,7 @@ permission mode).
 - [x] Test-install the built `.plasmoid` via `kpackagetool6` (or the
       equivalent local install path) to confirm the zip is structured
       correctly before it ever goes near the Store — `kpackagetool6
-      --type Plasma/Applet --upgrade knvtop-1.0.0.plasmoid` installed
+      --type Plasma/Applet --upgrade knvtop-<version>.plasmoid` installed
       cleanly, files match the repo exactly, plasmashell reloaded with no
       errors
 - [x] Draft store listing copy (title, tagline, longer description, tags/

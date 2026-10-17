@@ -11,6 +11,20 @@ Rectangle {
     property color titleColor: "#4d9fff"
     property string subtitle: ""
     property string cmdline: ""
+    // pid > 0 → show the kill button; 0/undefined → hide it.
+    property int pid: 0
+    // Only true when this process is killable by the current user: either
+    // we have passwordless sudo (can kill any user's process), or the
+    // process is owned by the same user as the knvtop service.
+    property bool killable: false
+    // Emitted after the two-click confirm; main.qml owns the D-Bus call so
+    // the card doesn't need to know about it.
+    signal killRequested(int pid)
+    // True when the process lives in a systemd service we're allowed to
+    // restart; `unit` is that service's name (shown in the tooltip).
+    property bool restartable: false
+    property string unit: ""
+    signal restartRequested(int pid)
     // Live per-process stats row, shown between the title and subtitle
     // when any of them is available (all null → row hidden). null renders
     // as N/A -- e.g. GPU%/VRAM read /proc/<pid>/fdinfo, which the kernel
@@ -66,13 +80,36 @@ Rectangle {
         anchors.margins: 8
         spacing: 3
 
-        Text {
+        RowLayout {
             Layout.fillWidth: true
-            text: card.title
-            color: card.titleColor
-            font.bold: true
-            font.pointSize: 9
-            wrapMode: Text.Wrap
+            spacing: 4
+
+            Text {
+                Layout.fillWidth: true
+                text: card.title
+                color: card.titleColor
+                font.bold: true
+                font.pointSize: 9
+                wrapMode: Text.Wrap
+            }
+
+            // Restart the systemd service that owns this process (e.g. to
+            // reload llama.cpp config). Hidden when there isn't one.
+            ConfirmButton {
+                visible: card.restartable && card.pid > 0
+                idleIcon: "view-refresh"
+                armedText: "Restart? Click"
+                tip: "Restart service " + card.unit
+                onConfirmed: card.restartRequested(card.pid)
+            }
+
+            ConfirmButton {
+                visible: card.killable && card.pid > 0
+                idleIcon: "application-exit"
+                armedText: "Kill? Click"
+                tip: "Kill process " + card.pid
+                onConfirmed: card.killRequested(card.pid)
+            }
         }
         Text {
             Layout.fillWidth: true

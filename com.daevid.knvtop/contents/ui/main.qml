@@ -28,6 +28,8 @@ PlasmoidItem {
     property var vllm: []
     property var ollamaModels: []
     property var gpuProcs: []
+    property string currentUser: ""
+    property bool canKillAll: false
 
     function matchesFilters(entry) {
         var user = Plasmoid.configuration.filterUser
@@ -146,6 +148,8 @@ PlasmoidItem {
             ollamaModels = s.llm.ollama_models || [];
         }
         gpuProcs = s.gpu_procs || [];
+        if (s.current_user) currentUser = s.current_user;
+        if (s.can_kill_all !== undefined) canKillAll = s.can_kill_all;
         function push(arr, v) {
             arr.push(v === null || v === undefined ? null : Number(v));
             while (arr.length > windowSize) arr.shift();
@@ -172,6 +176,41 @@ PlasmoidItem {
         });
         PlasmaDBus.SessionBus.asyncCall(msg, () => {}, () => {});
     }
+
+    // verb is "kill" or "restart"; the service exposes Kill()/Restart() on
+    // /com/daevid/knvtop/<verb>/<pid>.
+    function procAction(verb, pid) {
+        pid = Math.floor(Number(pid));
+        if (!(pid > 1)) return;
+        // The PID rides in the object path, not as an argument: this
+        // Plasma's QML dbusMessage never delivers method arguments (the
+        // callee sees none, however they're typed), so these methods take
+        // none and the service reads the PID off the path.
+        var msg = new PlasmaDBus.dbusMessage({
+            service: "com.daevid.knvtop",
+            path: "/com/daevid/knvtop/" + verb + "/" + pid,
+            iface: "com.daevid.knvtop.Process",
+            member: verb === "kill" ? "Kill" : "Restart",
+            arguments: []
+        });
+        PlasmaDBus.SessionBus.asyncCall(msg, (reply) => {
+            if (reply.isError) {
+                console.warn("knvtop: " + verb + " " + pid + " failed:", reply.error.message);
+            } else if (reply.values && reply.values.length >= 2 && !reply.values[0]) {
+                // the string half of the (b, s) reply arrives wrapped as {value}
+                var why = reply.values[1];
+                console.warn("knvtop: " + verb + " " + pid + " failed:",
+                             (why && why.value !== undefined) ? why.value : why);
+            }
+            root.poll();
+        }, (error) => {
+            console.warn("knvtop: " + verb + " " + pid + " D-Bus call failed:", error);
+            root.poll();
+        });
+    }
+
+    function killProcess(pid) { procAction("kill", pid) }
+    function restartProcess(pid) { procAction("restart", pid) }
 
     function poll() {
         var msg = new PlasmaDBus.dbusMessage({
@@ -580,18 +619,34 @@ PlasmoidItem {
                              : modelData.kind === "vllm"
                                    ? "vllm" + (modelData.model ? "  [" + modelData.model + "]" : "")
                              : modelData.name
+                        pid: modelData.pid
+                        // Show the kill button if we have passwordless sudo
+                        // (can kill any user's process), or if this process
+                        // is owned by the same user as the knvtop service.
+                        killable: root.canKillAll || modelData.user === root.currentUser
+                        onKillRequested: (p) => root.killProcess(p)
+                        // Restart = `systemctl restart` on the service that
+                        // owns this pid (modelData.unit, "system:x.service"
+                        // or "user:x.service"; null when it isn't in one).
+                        // System units need the service's passwordless sudo.
+                        unit: modelData.unit ? modelData.unit.split(":")[1] : ""
+                        restartable: !!modelData.unit
+                                     && (modelData.unit.indexOf("user:") === 0 || root.canKillAll)
+                        onRestartRequested: (p) => root.restartProcess(p)
                         gpuPct: modelData.gpu_pct
                         vramKb: modelData.vram_kb
                         cpuPct: modelData.cpu_pct
                         hostMemKb: modelData.rss_kb
                         subtitle: modelData.kind === "llama"
-                                      ? "ngl: " + (modelData.ngl || "N/A")
+                                      ? "user: " + (modelData.user || "N/A")
+                                        + "   ngl: " + (modelData.ngl || "N/A")
                                         + "   ctx: " + (modelData.ctx || "N/A")
                                         + "   parallel: " + (modelData.parallel || "N/A")
                                         + "   threads: " + (modelData.threads || "N/A")
                                         + "   pid: " + modelData.pid
                                   : modelData.kind === "ollama" || modelData.kind === "vllm"
-                                      ? "pid: " + modelData.pid
+                                      ? "user: " + (modelData.user || "N/A")
+                                        + "   pid: " + modelData.pid
                                   : "user: " + modelData.user
                                     + "   type: " + (modelData.type && modelData.type.length ? modelData.type.join("+") : "N/A")
                                     + "   pid: " + modelData.pid
