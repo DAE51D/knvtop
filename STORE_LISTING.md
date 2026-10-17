@@ -76,9 +76,12 @@ https://github.com/DAE51D/knvtop
   always refused.
 - New: processes show their owning user on the card.
 - Fix: llama-bench cards now show their model (it uses `-m`, not `--model`).
-- IMPORTANT: the backend service must be restarted after updating
-  (`systemctl --user restart knvtop.service`) -- kill/restart are new
-  service endpoints.
+- IMPORTANT: kill and restart need the updated backend service, which is
+  installed separately from this package. Update it from the repo
+  (https://github.com/DAE51D/knvtop) and run
+  `systemctl --user restart knvtop.service`. Until you do, the widget works
+  as before, but the kill button won't work and the restart button won't
+  appear.
 ---
 
 (1.1.1 fixed the GPU vs process memory statistics; 1.1.0 added NVIDIA support.)
