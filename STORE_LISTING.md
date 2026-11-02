@@ -69,6 +69,9 @@ https://github.com/DAE51D/knvtop
 1.2.0:
 
 ---
+- The D-Bus telemetry daemon is now a separate shared install at
+  https://github.com/DAE51D/knvtop-service; it can serve both knvtop and
+  OpenChamber's onvtop extension.
 - New: kill button on every process card (two-click confirm; SIGTERM, then
   SIGKILL if the process doesn't exit). Killing another user's process needs
   passwordless sudo for the service's user.

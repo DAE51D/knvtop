@@ -34,6 +34,10 @@ permission mode).
       the other direction: Gitea stays authoritative, auto-pushes to
       GitHub on every commit + an 8h fallback interval). Verified: both
       remotes' HEAD commits match exactly.
+- [x] Move the shared D-Bus sampler into
+      https://github.com/DAE51D/knvtop-service. Both the widget and onvtop
+      use the stable bus API; installing the widget is no longer required
+      to use the daemon.
 - [x] Screenshots for the listing — `compact-panel.png` captured directly;
       `tooltip.png`/`popup-expanded.png`/`config-page.png` supplied by the
       owner (needed the widget clicked open, safer for them to grab than
