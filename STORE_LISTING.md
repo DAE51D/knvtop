@@ -54,10 +54,11 @@ itself uses, plus amd-smi/sysfs for system-wide GPU stats. Tested on an
 AMD Strix Halo APU (unified memory) but the process-discovery code isn't
 hardware-specific beyond the AMDGPU driver.
 
-Requires a small backend service (a Python D-Bus helper, no other
-runtime dependencies) that must be installed and started once via
-systemd. The widget shows setup instructions directly in the popup if
-it isn't running yet. Full instructions in the README.
+Requires the separate knvtop-service daemon (a Python D-Bus service) to be
+installed once for the current Linux user. The same daemon can serve the
+onvtop OpenChamber extension, so users do not need to install both clients.
+The widget shows setup instructions directly in the popup if it isn't
+running yet. Install instructions: https://github.com/DAE51D/knvtop-service
 
 Source, issue tracker, and full documentation:
 https://github.com/DAE51D/knvtop
@@ -76,10 +77,10 @@ https://github.com/DAE51D/knvtop
   always refused.
 - New: processes show their owning user on the card.
 - Fix: llama-bench cards now show their model (it uses `-m`, not `--model`).
-- IMPORTANT: kill and restart need the updated backend service, which is
-  installed separately from this package. Update it from the repo
-  (https://github.com/DAE51D/knvtop) and run
-  `systemctl --user restart knvtop.service`. Until you do, the widget works
+- IMPORTANT: kill and restart need the updated knvtop-service daemon, which
+  is installed separately from this package. Update it from
+  https://github.com/DAE51D/knvtop-service and rerun `./install.sh`. Until
+  then, the widget works
   as before, but the kill button won't work and the restart button won't
   appear.
 ---

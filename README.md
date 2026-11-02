@@ -32,20 +32,22 @@ process filters:
 
 ## Install
 
+Install the shared D-Bus daemon once by following the instructions in
+[knvtop-service](https://github.com/DAE51D/knvtop-service) (from its clone,
+run `./install.sh`). This separate daemon is shared by the Plasma widget and
+OpenChamber's onvtop extension; neither client needs to be installed to use
+the other.
+
+Then, from this repository:
+
 1. Copy the plasmoid into place:
    ```bash
    cp -r com.daevid.knvtop ~/.local/share/plasma/plasmoids/
    ```
-2. Install and enable the D-Bus backend service:
-   ```bash
-   cp service/knvtop.service ~/.config/systemd/user/
-   systemctl --user daemon-reload
-   systemctl --user enable --now knvtop.service
-   ```
-3. Restart plasmashell so it picks up the new plasmoid (QML doesn't
+2. Restart plasmashell so it picks up the new plasmoid (QML doesn't
    hot-reload): `kquitapp6 plasmashell; nohup plasmashell &`
    (no logout/login needed).
-4. Right-click the panel → **Add Widgets…** → search "knvtop" → add it.
+3. Right-click the panel → **Add Widgets…** → search "knvtop" → add it.
 
 ## Data sources
 
@@ -141,7 +143,7 @@ sudo cp "$(readlink -f "$(which python3)")" /usr/local/lib/knvtop/python3-ptrace
 sudo setcap cap_sys_ptrace+ep /usr/local/lib/knvtop/python3-ptrace
 ```
 
-`service/knvtop.service`'s `ExecStart` already checks for this dedicated
+`knvtop-service`'s user unit already checks for this dedicated
 copy and uses it automatically if present, falling back to plain `python3`
 (no cross-user GPU%/VRAM, everything else still works) if you skip this
 step. After creating the copy, just restart the service:

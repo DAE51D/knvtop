@@ -434,12 +434,9 @@ PlasmoidItem {
                     }
                 }
 
-                // Shown instead of the normal content when the D-Bus
-                // backend service isn't reachable -- installing the
-                // plasmoid alone doesn't install/start it (a declarative
-                // QML applet can't launch its own external process), so
-                // without this the popup would otherwise just look
-                // blank/broken on a fresh install.
+                // Shown instead of the normal content when the shared
+                // knvtop-service daemon isn't reachable. Installing the
+                // plasmoid alone doesn't install/start that user service.
                 ColumnLayout {
                     Layout.fillWidth: true
                     visible: root.needsSetup
@@ -447,14 +444,14 @@ PlasmoidItem {
 
                     Text {
                         Layout.fillWidth: true
-                        text: "Backend service not running"
+                        text: "knvtop-service not running"
                         color: Kirigami.Theme.negativeTextColor
                         font.bold: true
                         font.pointSize: 10
                     }
                     Text {
                         Layout.fillWidth: true
-                        text: "knvtop's D-Bus backend isn't reachable. From the repo, run these once to install and start it:"
+                        text: "The shared telemetry daemon isn't reachable. Install it once; both knvtop and onvtop use it:"
                         color: Kirigami.Theme.textColor
                         font.pointSize: 8
                         wrapMode: Text.Wrap
@@ -469,10 +466,9 @@ PlasmoidItem {
                             id: setupCmds
                             anchors.fill: parent
                             anchors.margins: 8
-                            text: "cp -r com.daevid.knvtop ~/.local/share/plasma/plasmoids/\n"
-                                + "cp service/knvtop.service ~/.config/systemd/user/\n"
-                                + "systemctl --user daemon-reload\n"
-                                + "systemctl --user enable --now knvtop.service"
+                            text: "git clone https://github.com/DAE51D/knvtop-service.git\n"
+                                + "cd knvtop-service\n"
+                                + "./install.sh"
                             color: "#c8ccd2"
                             font.pointSize: 8
                             font.family: "monospace"

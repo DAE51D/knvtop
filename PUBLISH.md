@@ -10,11 +10,10 @@ permission mode).
 
 - [x] Add `LICENSE` file with the full LGPL-2.1-or-later text (metadata.json
       already declares this license; there's no LICENSE file in the repo yet)
-- [x] "Service not running" detection in the popup — if the D-Bus backend
-      isn't reachable, show setup instructions (the systemd steps from
-      README.md) instead of a blank/broken-looking popup. This matters for
-      a store listing since installing the plasmoid alone doesn't install
-      the backend service.
+- [x] "Service not running" detection in the popup — if the shared
+      `knvtop-service` D-Bus daemon isn't reachable, show its install
+      instructions instead of a blank/broken-looking popup. Installing the
+      plasmoid alone does not install the shared daemon.
 - [x] `.gitignore`/package hygiene check — `git archive` only includes
       tracked files, so `.ruff_cache/`/`__pycache__/`/etc. can't end up in
       the package without also needing to be committed first

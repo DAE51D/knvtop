@@ -6,6 +6,10 @@ Working-style rules (anti-loop rule, rtk caveats, progress updates) live in
 Project-specific:
 
 - Design decisions + research findings: `knvtop.prompt.md` (keep it in sync).
+- The D-Bus sampler is maintained separately in
+  [knvtop-service](https://github.com/DAE51D/knvtop-service). Install its
+  per-user daemon before adding this widget; onvtop uses the same service.
+  The plasmoid repo no longer owns or installs the daemon implementation.
 - Plasmoid source: `com.daevid.knvtop/`; runtime copy is
   `~/.local/share/plasma/plasmoids/com.daevid.knvtop/` — deploy with
   `scripts/deploy-dev.sh` (not a bare `cp -r`). It rsyncs the tree and stamps
@@ -58,8 +62,9 @@ privilege hole since the service kills via sudo).
 
 Restart uses the identical scheme: `Restart()` on
 `/com/daevid/knvtop/restart/<pid>` (`KnvtopRestartObject`). The service
-re-resolves the owning unit from the pid via `owning_unit()` in
-`knvtop_poll.py` (cgroup → `system:x.service` / `user:x.service`, with a
+re-resolves the owning unit from the pid via `owning_unit()` in the shared
+`knvtop-service/backend/knvtop_poll.py` (cgroup → `system:x.service` /
+`user:x.service`, with a
 denylist for kwin/sddm/logind/dbus/user@/knvtop) — **never accept a unit name
 from the client**. `KnvtopDBusObject` already has a `Restart` (Status iface,
 restarts the poller), and dbus-python keys members on the Python function
@@ -82,7 +87,7 @@ Plasma D-Bus marshalling the widget uses. Aim it at a throwaway
 
 - **`ruff`** (0.16.x, via `uv tool install ruff`, on PATH at
   `~/.local/bin/ruff`). Linter + formatter for the Python backend.
-  - `ruff check com.daevid.knvtop/backend/knvtop_poll.py` — lint.
+  - Run `ruff check backend/knvtop_poll.py` from the `knvtop-service` repo.
   - `ruff format --check <file>` — would-it-reformat check.
   - **The editor auto-save hook already runs `ruff format`** on the Python
     backend, so the committed style IS ruff-format style. Don't fight it —

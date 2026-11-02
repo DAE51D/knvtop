@@ -1,8 +1,25 @@
 # knvtop — KWin/Plasma GPU + LLM Monitor Widget
 
+## Current shared-service architecture (2026-11-01)
+
+- The poller and D-Bus service are maintained in the standalone repository
+  https://github.com/DAE51D/knvtop-service. Install its per-user daemon once
+  with `./install.sh`; do not copy the sampler or service back into this
+  plasmoid repository.
+- The D-Bus name/interface stays `com.daevid.knvtop` and
+  `com.daevid.knvtop.Sample.Get()`. The knvtop widget and onvtop OpenChamber
+  extension are independent clients of that one sampler.
+- `com.daevid.knvtop/backend/knvtop_poll.py` and `service/` have been removed
+  from this repo after migrating the live user unit to
+  `~/.local/share/knvtop-service`. Backend changes now belong in the shared
+  service repo; QML changes remain here.
+- The D-Bus contract is session-local and read/control methods are exposed
+  to same-user clients. Do not replace it with an unauthenticated network
+  endpoint or make the widget auto-install a second poller.
+
 ## Goal
 
-Build a self-contained KWin/Plasma widget (KDE Plasma 6, Kubuntu) that renders
+Build a KWin/Plasma widget (KDE Plasma 6, Kubuntu) that renders
 nvtop's graph panel — the four upper time-series lines — and, on hover,
 pops up a detail view of the local LLM inference stack (llama.cpp, Ollama,
 vllm, etc.) plus system RAM/CPU stats.
@@ -608,6 +625,6 @@ so this doesn't need re-deriving from scratch later:
 ## Scope
 
 - **In:** single APU (EVO-X2), 4 GPU lines, LLM-only hover detail, RAM/CPU,
-  self-contained.
+  shared `knvtop-service` D-Bus daemon dependency.
 - **Out (later):** multi-GPU, NVIDIA/Intel backends, per-process GPU-mem
   attribution, panel-only sizing tweaks, packaging (.plasmoid/deb).
