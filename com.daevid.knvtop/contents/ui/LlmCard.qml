@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Reusable card for one LLM process (llama.cpp / ollama / vllm entry).
+// Reusable card for one LLM process (llama.cpp / Ollama / vLLM / SGLang / TGI entry).
 // Extracted from 3x near-identical Rectangle+ColumnLayout blocks in
 // main.qml's fullRepresentation.
 Rectangle {

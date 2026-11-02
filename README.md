@@ -3,7 +3,7 @@
 A KDE Plasma 6 widget that shows nvtop-style GPU telemetry (utilization,
 memory, temperature, power, plus CPU%) as a compact multi-line graph in the
 panel, expanding into a detail popup with per-process cards for local LLM
-inference servers (llama.cpp, ollama, vllm) and — optionally — every
+inference servers (llama.cpp, Ollama, vLLM, SGLang, and Hugging Face TGI) and — optionally — every
 GPU-using process on the system, filterable by user and engine type.
 
 Built for a single AMD APU with unified memory (Strix Halo / Radeon 8060S),
@@ -20,8 +20,8 @@ rather not clone the repo.
 
 ![Hover tooltip](screenshots/tooltip.png)
 
-**Expanded popup** — ring gauges, graph, and per-process cards (llama.cpp
-flags table, ollama, or the full generic process list):
+**Expanded popup** — ring gauges, graph, and per-process cards (model server
+flags, Ollama loaded models, or the full generic process list):
 
 ![Expanded popup](screenshots/popup-expanded.png)
 
@@ -49,6 +49,8 @@ Then, from this repository:
    (no logout/login needed).
 3. Right-click the panel → **Add Widgets…** → search "knvtop" → add it.
 
+For an AI-assisted installation, point your coding agent at the [knvtop install skill](SKILL.md). It covers the shared daemon dependency and Plasma widget setup without assuming a particular Linux username.
+
 ## Data sources
 
 - **GPU** (util/mem/temp/power): primary `amd-smi metric --json`; falls back
@@ -57,9 +59,10 @@ Then, from this repository:
   `amd-smi` isn't available.
 - **System** (RAM/swap/load/CPU%): `/proc/meminfo`, `/proc/loadavg`,
   `/proc/stat` (CPU% is a delta between consecutive samples).
-- **LLM processes**: `/proc/*/cmdline` pattern-matched for
-  `llama-server`/`llama-cli`/`ollama`/`vllm`; ollama's own loaded-model list
-  additionally comes from its `/api/ps` HTTP endpoint.
+- **LLM processes**: `/proc/*/cmdline` recognizes llama.cpp, Ollama, vLLM,
+  SGLang, and Hugging Face TGI launchers; Ollama's loaded-model list comes
+  from its `/api/ps` HTTP endpoint. Desktop clients such as VS Code are not
+  treated as model processes.
 - **Generic GPU process list** (the "AI/LLM processes only" checkbox, off):
   every process's `/proc/<pid>/fdinfo` is scanned for open DRM client file
   descriptors — the same mechanism nvtop itself uses. Which `drm-engine-*`

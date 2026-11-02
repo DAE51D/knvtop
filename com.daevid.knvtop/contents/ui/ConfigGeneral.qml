@@ -18,9 +18,9 @@ KCM.SimpleKCM {
     property string cfg_filterType
 
     // Populated from a live D-Bus query so the dropdown offers the users
-    // actually seen right now (aistack/dae51d/root, ...), not a guess --
-    // this is meant to be reusable on other people's machines with
-    // whatever accounts THEY happen to run things under.
+    // actually seen right now (desktop user, service account, root, etc.),
+    // not a machine-specific guess. This stays reusable across installations
+    // with whatever account layout they happen to use.
     property var knownUsers: []
 
     function refreshKnownUsers() {
@@ -41,7 +41,7 @@ KCM.SimpleKCM {
                     if (procs[i].user) seen[procs[i].user] = true
                 }
                 var llm = s.llm || {}
-                ["llama", "ollama", "vllm"].forEach(function(kind) {
+                ["llama", "ollama", "vllm", "sglang", "tgi"].forEach(function(kind) {
                     (llm[kind] || []).forEach(function(e) {
                         if (e.user) seen[e.user] = true
                     })

@@ -26,6 +26,8 @@ PlasmoidItem {
     property var llama: []
     property var ollama: []
     property var vllm: []
+    property var sglang: []
+    property var tgi: []
     property var ollamaModels: []
     property var gpuProcs: []
     property string currentUser: ""
@@ -42,7 +44,7 @@ PlasmoidItem {
 
     // ONE process list, not two separate views: every GPU-touching process
     // (gpuProcs) merged by pid with the recognized-by-name LLM entries
-    // (llama/ollama/vllm), which may not even show up in gpuProcs at all
+    // (llama/ollama/vllm/SGLang/TGI), which may not even show up in gpuProcs at all
     // (e.g. a pure HTTP router in front of the real GPU workers has no
     // open DRM fd of its own). "AI/LLM processes only" narrows this one
     // list down to entries with a recognized kind; it does not switch to
@@ -62,6 +64,8 @@ PlasmoidItem {
         layer(root.llama.filter(function(l) { return l.model }), "llama")
         layer(root.ollama, "ollama")
         layer(root.vllm.filter(function(v) { return v.model }), "vllm")
+        layer(root.sglang.filter(function(s) { return s.model }), "sglang")
+        layer(root.tgi.filter(function(t) { return t.model }), "tgi")
         var out = []
         for (var pid in byPid) out.push(byPid[pid])
         return out
@@ -145,6 +149,8 @@ PlasmoidItem {
             llama = s.llm.llama || [];
             ollama = s.llm.ollama || [];
             vllm = s.llm.vllm || [];
+            sglang = s.llm.sglang || [];
+            tgi = s.llm.tgi || [];
             ollamaModels = s.llm.ollama_models || [];
         }
         gpuProcs = s.gpu_procs || [];
@@ -603,6 +609,8 @@ PlasmoidItem {
                         titleColor: modelData.kind === "llama" ? "#4d9fff"
                                   : modelData.kind === "ollama" ? "#e8c33a"
                                   : modelData.kind === "vllm" ? "#b07fe8"
+                                  : modelData.kind === "sglang" ? "#3ddc84"
+                                  : modelData.kind === "tgi" ? "#ff8c42"
                                   : Kirigami.Theme.positiveTextColor
                         // pid/port/model filename are already in the gray
                         // cmdline/flags text below for llama/vllm, so
@@ -612,9 +620,13 @@ PlasmoidItem {
                                    ? "llama.cpp" + (modelData.alias ? "  [" + modelData.alias + "]" : "")
                              : modelData.kind === "ollama"
                                    ? "ollama" + (modelData.subcmd ? "  " + modelData.subcmd : "")
-                             : modelData.kind === "vllm"
-                                   ? "vllm" + (modelData.model ? "  [" + modelData.model + "]" : "")
-                             : modelData.name
+                              : modelData.kind === "vllm"
+                                    ? "vllm" + (modelData.model ? "  [" + modelData.model + "]" : "")
+                              : modelData.kind === "sglang"
+                                    ? "SGLang" + (modelData.model ? "  [" + modelData.model + "]" : "")
+                              : modelData.kind === "tgi"
+                                    ? "Hugging Face TGI" + (modelData.model ? "  [" + modelData.model + "]" : "")
+                              : modelData.name
                         pid: modelData.pid
                         // Show the kill button if we have passwordless sudo
                         // (can kill any user's process), or if this process
@@ -640,7 +652,8 @@ PlasmoidItem {
                                         + "   parallel: " + (modelData.parallel || "N/A")
                                         + "   threads: " + (modelData.threads || "N/A")
                                         + "   pid: " + modelData.pid
-                                  : modelData.kind === "ollama" || modelData.kind === "vllm"
+                                   : modelData.kind === "ollama" || modelData.kind === "vllm"
+                                      || modelData.kind === "sglang" || modelData.kind === "tgi"
                                       ? "user: " + (modelData.user || "N/A")
                                         + "   pid: " + modelData.pid
                                   : "user: " + modelData.user
