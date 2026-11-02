@@ -594,9 +594,8 @@ so this doesn't need re-deriving from scratch later:
   plus a new `_proc_cpu_pct()` (delta of `/proc/<pid>/stat` utime+stime,
   same pattern as `_cpu_sample()`).
 - [x] Cross-user GPU visibility: `/proc/<pid>/fdinfo` is same-uid-or-root
-  only, so a process owned by a different account (this box's actual
-  llama.cpp, which runs as `aistack`, not this service's `dae51d`) read
-  GPU%/VRAM as N/A. Fixed by granting `cap_sys_ptrace` to a **dedicated
+  only, so a process owned by a different account can show GPU%/VRAM as
+  N/A. Fixed by granting `cap_sys_ptrace` to a **dedicated
   copy** of python3 (`/usr/local/lib/knvtop/python3-ptrace`), not the
   shared system binary — capabilities live on the file's inode, so
   setcap'ing the real `/usr/bin/python3.14` would've handed

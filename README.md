@@ -72,10 +72,10 @@ Then, from this repository:
 Each process card has a kill button. The first click arms it ("Kill? Click",
 3 seconds); the second click sends SIGTERM, escalating to SIGKILL if the
 process is still alive after 3 seconds. Processes owned by your own user are
-signaled directly; processes owned by anyone else (e.g. an `aistack` LLM
-service account) go through `sudo -n kill`, so the button only appears for
-them when passwordless sudo works for the service's user. From a shell you
-can do the same thing the widget does:
+signaled directly; processes owned by anyone else (e.g. a dedicated
+inference-service account) go through `sudo -n kill`, so the button only
+appears for them when passwordless sudo works for the service's user. From a
+shell you can do the same thing the widget does:
 
 ```bash
 busctl --user call com.daevid.knvtop /com/daevid/knvtop/kill/<pid> com.daevid.knvtop.Process Kill
@@ -118,9 +118,9 @@ nvtop, not a bug.
 ## Cross-user GPU stats (per-process GPU%/VRAM showing "N/A")
 
 If you run your LLM server under a **different system account** than the
-one this widget's D-Bus service runs as (a common setup — e.g. an isolated
-`aistack`/`ollama` service user, kept separate from your login account for
-exactly the reasons you'd expect), per-process GPU% and VRAM will read as
+one this widget's D-Bus service runs as (a common setup — e.g. a dedicated
+LLM service account, kept separate from the desktop login), per-process GPU%
+and VRAM will read as
 `N/A` for that process's card, even though everything else (CPU%, RSS,
 CLI flags) works fine.
 
