@@ -168,9 +168,9 @@ PlasmoidItem {
     function restartPoller() {
         pollerAlive = false;
         var msg = new PlasmaDBus.dbusMessage({
-            service: "com.daevid.knvtop",
-            path: "/com/daevid/knvtop",
-            iface: "com.daevid.knvtop.Status",
+            service: "com.daevid.nvstats",
+            path: "/com/daevid/nvstats",
+            iface: "com.daevid.nvstats.Status",
             member: "Restart",
             arguments: []
         });
@@ -178,7 +178,7 @@ PlasmoidItem {
     }
 
     // verb is "kill" or "restart"; the service exposes Kill()/Restart() on
-    // /com/daevid/knvtop/<verb>/<pid>.
+    // /com/daevid/nvstats/<verb>/<pid>.
     function procAction(verb, pid) {
         pid = Math.floor(Number(pid));
         if (!(pid > 1)) return;
@@ -187,9 +187,9 @@ PlasmoidItem {
         // callee sees none, however they're typed), so these methods take
         // none and the service reads the PID off the path.
         var msg = new PlasmaDBus.dbusMessage({
-            service: "com.daevid.knvtop",
-            path: "/com/daevid/knvtop/" + verb + "/" + pid,
-            iface: "com.daevid.knvtop.Process",
+            service: "com.daevid.nvstats",
+            path: "/com/daevid/nvstats/" + verb + "/" + pid,
+            iface: "com.daevid.nvstats.Process",
             member: verb === "kill" ? "Kill" : "Restart",
             arguments: []
         });
@@ -214,9 +214,9 @@ PlasmoidItem {
 
     function poll() {
         var msg = new PlasmaDBus.dbusMessage({
-            service: "com.daevid.knvtop",
-            path: "/com/daevid/knvtop",
-            iface: "com.daevid.knvtop.Sample",
+            service: "com.daevid.nvstats",
+            path: "/com/daevid/nvstats",
+            iface: "com.daevid.nvstats.Sample",
             member: "Get",
             arguments: []
         });
@@ -435,7 +435,7 @@ PlasmoidItem {
                 }
 
                 // Shown instead of the normal content when the shared
-                // knvtop-service daemon isn't reachable. Installing the
+                // nvstats-service daemon isn't reachable. Installing the
                 // plasmoid alone doesn't install/start that user service.
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -444,7 +444,7 @@ PlasmoidItem {
 
                     Text {
                         Layout.fillWidth: true
-                        text: "knvtop-service not running"
+                        text: "nvstats-service not running"
                         color: Kirigami.Theme.negativeTextColor
                         font.bold: true
                         font.pointSize: 10
@@ -466,8 +466,8 @@ PlasmoidItem {
                             id: setupCmds
                             anchors.fill: parent
                             anchors.margins: 8
-                            text: "git clone https://github.com/DAE51D/knvtop-service.git\n"
-                                + "cd knvtop-service\n"
+                            text: "git clone https://github.com/DAE51D/nvstats-service.git\n"
+                                + "cd nvstats-service\n"
                                 + "./install.sh"
                             color: "#c8ccd2"
                             font.pointSize: 8

@@ -33,7 +33,7 @@ process filters:
 ## Install
 
 Install the shared D-Bus daemon once by following the instructions in
-[knvtop-service](https://github.com/DAE51D/knvtop-service) (from its clone,
+[nvstats-service](https://github.com/DAE51D/nvstats-service) (from its clone,
 run `./install.sh`). This separate daemon is shared by the Plasma widget and
 OpenChamber's onvtop extension; neither client needs to be installed to use
 the other.
@@ -78,9 +78,9 @@ appears for them when passwordless sudo works for the service's user. From a
 shell you can do the same thing the widget does:
 
 ```bash
-busctl --user call com.daevid.knvtop /com/daevid/knvtop/kill/<pid> com.daevid.knvtop.Process Kill
+busctl --user call com.daevid.nvstats /com/daevid/nvstats/kill/<pid> com.daevid.nvstats.Process Kill
 # or, with the PID as an argument:
-busctl --user call com.daevid.knvtop /com/daevid/knvtop com.daevid.knvtop.Process Kill s <pid>
+busctl --user call com.daevid.nvstats /com/daevid/nvstats com.daevid.nvstats.Process Kill s <pid>
 ```
 
 Both return `(bool ok, string message)`; PID 1 and the service itself are
@@ -97,10 +97,10 @@ the card reappears later. System services need the same passwordless sudo as
 killing another user's process; your own user services don't. Processes that
 aren't in a service (desktop apps, anything started from a shell) get no
 restart button, and session-critical units (kwin, display manager, logind,
-`user@`, dbus, knvtop itself) are always refused. From a shell:
+`user@`, dbus, nvstats itself) are always refused. From a shell:
 
 ```bash
-busctl --user call com.daevid.knvtop /com/daevid/knvtop/restart/<pid> com.daevid.knvtop.Process Restart
+busctl --user call com.daevid.nvstats /com/daevid/nvstats/restart/<pid> com.daevid.nvstats.Process Restart
 ```
 
 The service works out the unit from the PID itself (via `/proc/<pid>/cgroup`);
@@ -138,25 +138,25 @@ would hand `cap_sys_ptrace` to *every* Python script anyone runs on the
 machine. Instead, make a dedicated copy and grant it only there:
 
 ```bash
-sudo mkdir -p /usr/local/lib/knvtop
-sudo cp "$(readlink -f "$(which python3)")" /usr/local/lib/knvtop/python3-ptrace
-sudo setcap cap_sys_ptrace+ep /usr/local/lib/knvtop/python3-ptrace
+sudo mkdir -p /usr/local/lib/nvstats-service
+sudo cp "$(readlink -f "$(which python3)")" /usr/local/lib/nvstats-service/python3-ptrace
+sudo setcap cap_sys_ptrace+ep /usr/local/lib/nvstats-service/python3-ptrace
 ```
 
-`knvtop-service`'s user unit already checks for this dedicated
+`nvstats-service`'s user unit already checks for this dedicated
 copy and uses it automatically if present, falling back to plain `python3`
 (no cross-user GPU%/VRAM, everything else still works) if you skip this
 step. After creating the copy, just restart the service:
 
 ```bash
-systemctl --user restart knvtop.service
+systemctl --user restart nvstats.service
 ```
 
 Why a *copy* and not the real binary: Linux capabilities are stored as an
 extended attribute on the file's inode. Copying first gives you an
 independent inode, so the capability grant is scoped to exactly this one
 service — the system's real `python3` is never touched. (Verify the copy
-still works before wiring it in: `/usr/local/lib/knvtop/python3-ptrace -c
+still works before wiring it in: `/usr/local/lib/nvstats-service/python3-ptrace -c
 "import sys; print(sys.prefix)"` should print the normal stdlib prefix, not
 an error.)
 

@@ -25,9 +25,9 @@ KCM.SimpleKCM {
 
     function refreshKnownUsers() {
         var msg = new PlasmaDBus.dbusMessage({
-            service: "com.daevid.knvtop",
-            path: "/com/daevid/knvtop",
-            iface: "com.daevid.knvtop.Sample",
+            service: "com.daevid.nvstats",
+            path: "/com/daevid/nvstats",
+            iface: "com.daevid.nvstats.Sample",
             member: "Get",
             arguments: []
         })

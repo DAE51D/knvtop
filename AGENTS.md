@@ -7,7 +7,7 @@ Project-specific:
 
 - Design decisions + research findings: `knvtop.prompt.md` (keep it in sync).
 - The D-Bus sampler is maintained separately in
-  [knvtop-service](https://github.com/DAE51D/knvtop-service). Install its
+  [nvstats-service](https://github.com/DAE51D/nvstats-service). Install its
   per-user daemon before adding this widget; onvtop uses the same service.
   The plasmoid repo no longer owns or installs the daemon implementation.
 - Plasmoid source: `com.daevid.knvtop/`; runtime copy is
@@ -29,8 +29,8 @@ Project-specific:
   published on opendesktop/KDE Store** (https://www.opendesktop.org/p/2370069/),
   NOT the number of commits or work sessions. It is the version Plasma shows
   in "Add Widgets" and Settings → About. The rule:
-  - Published releases so far: 1.0.0, 1.1.0, 1.1.1. The next release is
-    **1.2.0** (the version in the tree until it is uploaded).
+  - Published releases so far: 1.0.0, 1.1.0, 1.1.1, 1.2.0. The next release is
+    **1.3.0** (the version in the tree until it is uploaded).
   - **Do not bump the version per commit or per feature.** Everything that
     lands between two uploads ships under the one next version. Bump only
     *after* a release is uploaded, to the next number (minor for new
@@ -53,24 +53,24 @@ with or without `signature`, and whether set in the constructor map or
 assigned afterwards (six variants tested 2026-10-16). `Sample.Get` and
 `Status.Restart` only work because they take none. So **any widget→service
 call that needs a value must carry it in the object path or member**, not
-`arguments`. Kill does this: `Kill()` on `/com/daevid/knvtop/kill/<pid>`,
-served by a dbus-python `FallbackObject` (`KnvtopKillObject`). Don't re-try
+`arguments`. Kill does this: `Kill()` on `/com/daevid/nvstats/kill/<pid>`,
+served by a dbus-python `FallbackObject` (`NvstatsKillObject`). Don't re-try
 arguments, `Qt.createQmlObject` workers, a `/tmp` PID-file watcher, or a
 `__getattr__` fake `Kill_<pid>` method — all were tried and fail (dbus-python
 only dispatches decorated methods; the `/tmp` file is also a local
 privilege hole since the service kills via sudo).
 
 Restart uses the identical scheme: `Restart()` on
-`/com/daevid/knvtop/restart/<pid>` (`KnvtopRestartObject`). The service
+`/com/daevid/nvstats/restart/<pid>` (`NvstatsRestartObject`). The service
 re-resolves the owning unit from the pid via `owning_unit()` in the shared
-`knvtop-service/backend/knvtop_poll.py` (cgroup → `system:x.service` /
+`nvstats-service/backend/nvstats_poll.py` (cgroup → `system:x.service` /
 `user:x.service`, with a
-denylist for kwin/sddm/logind/dbus/user@/knvtop) — **never accept a unit name
-from the client**. `KnvtopDBusObject` already has a `Restart` (Status iface,
+denylist for kwin/sddm/logind/dbus/user@/nvstats) — **never accept a unit name
+from the client**. `NvstatsDBusObject` already has a `Restart` (Status iface,
 restarts the poller), and dbus-python keys members on the Python function
 name, so a second `Restart` can't live on that class. Test restart/kill only
 against throwaway `systemd-run --user --unit=restart-probe sleep 600` units
-(the name must not start with `knvtop` or the denylist blocks it).
+(the name must not start with `nvstats` or the denylist blocks it).
 
 Also: `Kill` must stay async (`async_callbacks` + worker thread). It waits up
 to ~5s for the process to die; blocking the GLib loop stalls the 1s `Get`
@@ -87,7 +87,7 @@ Plasma D-Bus marshalling the widget uses. Aim it at a throwaway
 
 - **`ruff`** (0.16.x, via `uv tool install ruff`, on PATH at
   `~/.local/bin/ruff`). Linter + formatter for the Python backend.
-  - Run `ruff check backend/knvtop_poll.py` from the `knvtop-service` repo.
+  - Run `ruff check backend/nvstats_poll.py` from the `nvstats-service` repo.
   - `ruff format --check <file>` — would-it-reformat check.
   - **The editor auto-save hook already runs `ruff format`** on the Python
     backend, so the committed style IS ruff-format style. Don't fight it —

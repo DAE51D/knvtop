@@ -54,11 +54,11 @@ itself uses, plus amd-smi/sysfs for system-wide GPU stats. Tested on an
 AMD Strix Halo APU (unified memory) but the process-discovery code isn't
 hardware-specific beyond the AMDGPU driver.
 
-Requires the separate knvtop-service daemon (a Python D-Bus service) to be
+Requires the separate nvstats-service daemon (a Python D-Bus service) to be
 installed once for the current Linux user. The same daemon can serve the
 onvtop OpenChamber extension, so users do not need to install both clients.
 The widget shows setup instructions directly in the popup if it isn't
-running yet. Install instructions: https://github.com/DAE51D/knvtop-service
+running yet. Install instructions: https://github.com/DAE51D/nvstats-service
 
 Source, issue tracker, and full documentation:
 https://github.com/DAE51D/knvtop
@@ -66,29 +66,19 @@ https://github.com/DAE51D/knvtop
 
 ## Changelog (paste into the "Changelog" field when uploading a release)
 
-1.2.0:
+1.3.0:
 
 ---
-- The D-Bus telemetry daemon is now a separate shared install at
-  https://github.com/DAE51D/knvtop-service; it can serve both knvtop and
-  OpenChamber's onvtop extension.
-- New: kill button on every process card (two-click confirm; SIGTERM, then
-  SIGKILL if the process doesn't exit). Killing another user's process needs
-  passwordless sudo for the service's user.
-- New: restart button on cards whose process runs inside a systemd service
-  (runs `systemctl restart` on that service). Session-critical units are
-  always refused.
-- New: processes show their owning user on the card.
-- Fix: llama-bench cards now show their model (it uses `-m`, not `--model`).
-- IMPORTANT: kill and restart need the updated knvtop-service daemon, which
-  is installed separately from this package. Update it from
-  https://github.com/DAE51D/knvtop-service and rerun `./install.sh`. Until
-  then, the widget works
-  as before, but the kill button won't work and the restart button won't
-  appear.
+- The telemetry daemon is now installed separately as a shared user service.
+  Install nvstats-service once to use the Plasma widget or OpenChamber's onvtop
+  extension; the widget no longer bundles or owns a poller.
+- The D-Bus namespace is now `com.daevid.nvstats`; use this widget with
+  nvstats-service 1.0.0. The 1.2.0 widget uses the old bus name and must be
+  upgraded together with the service.
 ---
 
-(1.1.1 fixed the GPU vs process memory statistics; 1.1.0 added NVIDIA support.)
+(1.2.0 added kill/restart controls; 1.1.1 fixed GPU vs process memory
+statistics; 1.1.0 added NVIDIA support.)
 
 ## Note for whoever submits this
 

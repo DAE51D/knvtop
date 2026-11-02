@@ -3,19 +3,22 @@
 ## Current shared-service architecture (2026-11-01)
 
 - The poller and D-Bus service are maintained in the standalone repository
-  https://github.com/DAE51D/knvtop-service. Install its per-user daemon once
+  https://github.com/DAE51D/nvstats-service. Install its per-user daemon once
   with `./install.sh`; do not copy the sampler or service back into this
   plasmoid repository.
-- The D-Bus name/interface stays `com.daevid.knvtop` and
-  `com.daevid.knvtop.Sample.Get()`. The knvtop widget and onvtop OpenChamber
+- The current D-Bus name/interface is `com.daevid.nvstats` and
+  `com.daevid.nvstats.Sample.Get()`. The knvtop widget and onvtop OpenChamber
   extension are independent clients of that one sampler.
-- `com.daevid.knvtop/backend/knvtop_poll.py` and `service/` have been removed
-  from this repo after migrating the live user unit to
-  `~/.local/share/knvtop-service`. Backend changes now belong in the shared
+- `backend/nvstats_poll.py` and `service/nvstats_service.py` live in the
+  shared service repo; this plasmoid repository contains clients only.
+- The old `com.daevid.knvtop` D-Bus interface was retired; the live user
+  unit now runs the daemon from `~/.local/share/nvstats-service`. Backend changes belong in the shared
   service repo; QML changes remain here.
 - The D-Bus contract is session-local and read/control methods are exposed
   to same-user clients. Do not replace it with an unauthenticated network
   endpoint or make the widget auto-install a second poller.
+- Dated implementation notes below may mention the old pre-split layout;
+  use this section as the current source of truth.
 
 ## Goal
 
@@ -596,7 +599,7 @@ so this doesn't need re-deriving from scratch later:
 - [x] Cross-user GPU visibility: `/proc/<pid>/fdinfo` is same-uid-or-root
   only, so a process owned by a different account can show GPU%/VRAM as
   N/A. Fixed by granting `cap_sys_ptrace` to a **dedicated
-  copy** of python3 (`/usr/local/lib/knvtop/python3-ptrace`), not the
+  copy** of python3 (`/usr/local/lib/nvstats-service/python3-ptrace`), not the
   shared system binary — capabilities live on the file's inode, so
   setcap'ing the real `/usr/bin/python3.14` would've handed
   `cap_sys_ptrace` to every Python script anyone runs on the machine.
@@ -624,6 +627,6 @@ so this doesn't need re-deriving from scratch later:
 ## Scope
 
 - **In:** single APU (EVO-X2), 4 GPU lines, LLM-only hover detail, RAM/CPU,
-  shared `knvtop-service` D-Bus daemon dependency.
+  shared `nvstats-service` D-Bus daemon dependency.
 - **Out (later):** multi-GPU, NVIDIA/Intel backends, per-process GPU-mem
   attribution, panel-only sizing tweaks, packaging (.plasmoid/deb).

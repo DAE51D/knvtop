@@ -11,7 +11,7 @@ permission mode).
 - [x] Add `LICENSE` file with the full LGPL-2.1-or-later text (metadata.json
       already declares this license; there's no LICENSE file in the repo yet)
 - [x] "Service not running" detection in the popup — if the shared
-      `knvtop-service` D-Bus daemon isn't reachable, show its install
+      `nvstats-service` D-Bus daemon isn't reachable, show its install
       instructions instead of a blank/broken-looking popup. Installing the
       plasmoid alone does not install the shared daemon.
 - [x] `.gitignore`/package hygiene check — `git archive` only includes
@@ -35,7 +35,7 @@ permission mode).
       GitHub on every commit + an 8h fallback interval). Verified: both
       remotes' HEAD commits match exactly.
 - [x] Move the shared D-Bus sampler into
-      https://github.com/DAE51D/knvtop-service. Both the widget and onvtop
+      https://github.com/DAE51D/nvstats-service. Both the widget and onvtop
       use the stable bus API; installing the widget is no longer required
       to use the daemon.
 - [x] Screenshots for the listing — `compact-panel.png` captured directly;

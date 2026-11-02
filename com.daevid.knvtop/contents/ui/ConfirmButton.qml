@@ -1,5 +1,6 @@
 import QtQuick
 import org.kde.plasma.components as PlasmaComponents
+import org.kde.kirigami as Kirigami
 
 // Two-click button for destructive actions: the first click arms it (shows
 // armedText with a warning icon for 3s), the second click emits confirmed().
@@ -19,6 +20,10 @@ PlasmaComponents.ToolButton {
     implicitHeight: 22
     implicitWidth: armed ? 90 : 22
     text: armed ? armedText : ""
+    // Let Plasma/Kirigami supply a foreground color that adapts to the
+    // current Plasma theme (light/day vs dark/night); a hard-coded color
+    // would be unreadable in one of the modes.
+    palette.buttonText: Kirigami.Theme.textColor
 
     onClicked: {
         if (armed) {
