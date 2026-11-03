@@ -25,8 +25,8 @@ calls the widget category)
 
 ## Tags
 
-gpu, nvtop, monitor, system-monitor, llm, ollama, llama.cpp, amdgpu,
-process-monitor, plasmoid
+gpu, nvtop, monitor, system-monitor, llm, ollama, llama.cpp, vllm, sglang,
+tgi, nvstats-service, amdgpu, process-monitor, plasmoid
 
 ## Full description
 
@@ -60,6 +60,11 @@ D-Bus API. The same daemon can serve the
 onvtop OpenChamber extension, so users do not need to install both clients.
 The widget shows setup instructions directly in the popup if it isn't
 running yet. Install instructions: https://github.com/DAE51D/nvstats-service
+
+Version 1.3.0 is a breaking backend update. Version 1.2.0 uses the retired
+com.daevid.knvtop D-Bus API; 1.3.0 uses nvstats-service and
+com.daevid.nvstats. Upgrade the service and widget together. No compatibility
+alias is provided.
 
 Source, issue tracker, and full documentation:
 https://github.com/DAE51D/knvtop
