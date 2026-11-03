@@ -19,8 +19,14 @@ permission mode).
       the package without also needing to be committed first
 - [x] Packaging script (`scripts/build-plasmoid.sh`) that builds
       `knvtop-<version>.plasmoid` (a zip of `com.daevid.knvtop/`'s
-      contents, metadata.json at the zip root) — verified clean, 14 files,
+      contents, metadata.json at the zip root) — verified clean, 13 files,
       no dev cruft
+- [x] Prepare the 1.3.0 Store copy and explicitly document the breaking
+      migration from `com.daevid.knvtop` to `com.daevid.nvstats` in the
+      README and listing text.
+- [x] Build `knvtop-1.3.0.plasmoid` from committed HEAD and inspect the
+      archive: metadata version 1.3.0, nvstats D-Bus identifiers present,
+      telemetry daemon not bundled.
 - [x] Test-install the built `.plasmoid` via `kpackagetool6` (or the
       equivalent local install path) to confirm the zip is structured
       correctly before it ever goes near the Store — `kpackagetool6
