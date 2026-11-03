@@ -6,9 +6,9 @@ panel, expanding into a detail popup with per-process cards for local LLM
 inference servers (llama.cpp, Ollama, vLLM, SGLang, and Hugging Face TGI) and — optionally — every
 GPU-using process on the system, filterable by user and engine type.
 
-Built for a single AMD APU with unified memory (Strix Halo / Radeon 8060S),
-but the process-discovery and GPU-telemetry code is generic AMDGPU/libdrm,
-not tied to that specific hardware.
+Tested on an AMD APU with unified memory (Strix Halo / Radeon 8060S). The
+shared nvstats-service also supports NVIDIA telemetry through `nvidia-smi`;
+available per-process counters depend on the GPU and driver.
 
 Also available on the [KDE Store](https://store.kde.org/p/2370069/) —
 grab the `.plasmoid` there instead of building one yourself if you'd

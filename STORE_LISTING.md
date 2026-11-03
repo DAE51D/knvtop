@@ -49,10 +49,10 @@ Each process card has a two-click kill button, and a restart button for
 processes running inside a systemd service (handy for reloading a
 llama.cpp config).
 
-Built for AMD/AMDGPU: reads the same /proc/<pid>/fdinfo data nvtop
-itself uses, plus amd-smi/sysfs for system-wide GPU stats. Tested on an
-AMD Strix Halo APU (unified memory) but the process-discovery code isn't
-hardware-specific beyond the AMDGPU driver.
+Uses Linux process data and GPU telemetry from the shared nvstats-service.
+Tested on an AMD Strix Halo APU with unified memory; nvstats-service also
+supports NVIDIA telemetry through nvidia-smi. Per-process GPU counters vary
+by GPU and driver.
 
 Requires the separate nvstats-service daemon (a Python D-Bus service) to be
 installed once for the current Linux user. It uses the `com.daevid.nvstats`
