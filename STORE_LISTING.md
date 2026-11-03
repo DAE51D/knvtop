@@ -16,7 +16,7 @@ knvtop
 
 ## Tagline / short description (one line)
 
-nvtop-style GPU + LLM process monitor for the panel
+nvtop-style GPU and model-process monitor for the KDE Plasma 6 panel
 
 ## Category
 
@@ -39,11 +39,11 @@ temperature, power, plus CPU%) that expands into a detailed process view
 on click.
 
 Two views in one widget. AI/LLM focus (default) recognizes running
-llama.cpp, ollama, and vLLM instances and shows each as a card with its
-model, CLI flags (sorted, searchable at a glance), and live per-process
-GPU%/VRAM/CPU%/memory. Full process view (one checkbox away) shows every
-GPU-touching process on the system, nvtop-style, filterable by user and
-by engine type (Graphic/Compute/Both).
+llama.cpp, Ollama, vLLM, SGLang, and Hugging Face TGI model servers and
+shows model processes as cards with launch parameters and available live
+per-process GPU%/VRAM/CPU%/memory. Full process view (one checkbox away)
+shows every GPU-touching process on the system, nvtop-style, filterable by
+user and by engine type (Graphic/Compute/Both).
 
 Each process card has a two-click kill button, and a restart button for
 processes running inside a systemd service (handy for reloading a
@@ -55,7 +55,8 @@ AMD Strix Halo APU (unified memory) but the process-discovery code isn't
 hardware-specific beyond the AMDGPU driver.
 
 Requires the separate nvstats-service daemon (a Python D-Bus service) to be
-installed once for the current Linux user. The same daemon can serve the
+installed once for the current Linux user. It uses the `com.daevid.nvstats`
+D-Bus API. The same daemon can serve the
 onvtop OpenChamber extension, so users do not need to install both clients.
 The widget shows setup instructions directly in the popup if it isn't
 running yet. Install instructions: https://github.com/DAE51D/nvstats-service
@@ -66,15 +67,18 @@ https://github.com/DAE51D/knvtop
 
 ## Changelog (paste into the "Changelog" field when uploading a release)
 
-1.3.0:
+1.3.0 — BREAKING BACKEND UPDATE:
 
 ---
-- The telemetry daemon is now installed separately as a shared user service.
-  Install nvstats-service once to use the Plasma widget or OpenChamber's onvtop
-  extension; the widget no longer bundles or owns a poller.
-- The D-Bus namespace is now `com.daevid.nvstats`; use this widget with
-  nvstats-service 1.0.0. The 1.2.0 widget uses the old bus name and must be
-  upgraded together with the service.
+- BREAKING: knvtop 1.3.0 requires the separate nvstats-service and its
+  com.daevid.nvstats D-Bus API. knvtop 1.2.0 uses the retired
+  com.daevid.knvtop API. Upgrade the service and widget together; they are
+  incompatible, and no legacy D-Bus alias is provided.
+- The telemetry daemon is now a shared per-user service that can serve both
+  the Plasma widget and OpenChamber's onvtop extension. The widget no longer
+  bundles or owns a poller.
+- Adds process-card detection for SGLang and Hugging Face TGI and improves
+  vLLM launch-form detection.
 ---
 
 (1.2.0 added kill/restart controls; 1.1.1 fixed GPU vs process memory
@@ -82,11 +86,8 @@ statistics; 1.1.0 added NVIDIA support.)
 
 ## Note for whoever submits this
 
-Resolved: Gitea (`gitea.home.lan`, LAN-only) stays the working source of
-truth; a push mirror auto-syncs every commit (plus an 8h fallback
-interval, same pattern as `strix-halo-power`) to
-https://github.com/DAE51D/knvtop, which is what the store listing's
-source-link field should point at.
+The source-link field should point to the public repository:
+https://github.com/DAE51D/knvtop
 
 ## Screenshots to attach
 

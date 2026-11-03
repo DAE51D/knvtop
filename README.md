@@ -32,6 +32,8 @@ process filters:
 
 ## Install
 
+**Breaking change in 1.3.0:** knvtop now reads the standalone `nvstats-service` through the `com.daevid.nvstats` D-Bus API. Version 1.2.0 used the retired `com.daevid.knvtop` API; the two are not compatible, and no compatibility alias is provided. If upgrading from 1.2.0, update the service and widget together. Stop/remove the old `knvtop.service` installation before relying on the new service so the old poller does not continue running alongside it. The optional old cross-user helper should only be removed if it is no longer used by another service.
+
 Install the shared D-Bus daemon once by following the instructions in
 [nvstats-service](https://github.com/DAE51D/nvstats-service) (from its clone,
 run `./install.sh`). This separate daemon is shared by the Plasma widget and

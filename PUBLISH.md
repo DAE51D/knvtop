@@ -36,8 +36,9 @@ permission mode).
       remotes' HEAD commits match exactly.
 - [x] Move the shared D-Bus sampler into
       https://github.com/DAE51D/nvstats-service. Both the widget and onvtop
-      use the stable bus API; installing the widget is no longer required
-      to use the daemon.
+      use the shared service. For the 1.3.0 release, the old
+      `com.daevid.knvtop` API is deliberately retired; both the widget and
+      daemon must be upgraded together to `com.daevid.nvstats`.
 - [x] Screenshots for the listing — `compact-panel.png` captured directly;
       `tooltip.png`/`popup-expanded.png`/`config-page.png` supplied by the
       owner (needed the widget clicked open, safer for them to grab than
@@ -52,6 +53,11 @@ permission mode).
 - [ ] Fill in the submission form using the drafted copy above, attach
       screenshots, upload `knvtop.plasmoid`
 - [ ] Publish / submit for review
+
+For 1.3.0, build `knvtop-1.3.0.plasmoid` only after the release commit is on
+the branch (`scripts/build-plasmoid.sh` packages `HEAD`). The 1.3.0 changelog
+must clearly call out the nvstats-service dependency and incompatible D-Bus
+API change from 1.2.0.
 
 If anything in the "local prep" half unexpectedly trips a guardrail too,
 skip it here and do it yourself — no need to fight it, just note which
