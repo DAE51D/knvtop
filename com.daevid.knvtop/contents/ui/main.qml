@@ -23,11 +23,17 @@ PlasmoidItem {
                           temp: null, power_w: null, power_cap_w: null })
     property var sys: ({ ram_used: 0, ram_total: 0, swap_used: 0, swap_total: 0,
                           load1: 0, load5: 0, load15: 0, cpu: null })
+    // NPU: null on hosts without one, so every NPU element below stays hidden.
+    // Present but unreadable keeps the ring and legend and shows N/A.
+    property var npu: null
+    readonly property bool hasNpu: !!(npu && npu.present)
+    readonly property bool npuReadable: hasNpu && !!npu.readable
     property var llama: []
     property var ollama: []
     property var vllm: []
     property var sglang: []
     property var tgi: []
+    property var flm: []
     property var ollamaModels: []
     property var gpuProcs: []
     property string currentUser: ""
@@ -66,6 +72,7 @@ PlasmoidItem {
         layer(root.vllm.filter(function(v) { return v.model }), "vllm")
         layer(root.sglang.filter(function(s) { return s.model }), "sglang")
         layer(root.tgi.filter(function(t) { return t.model }), "tgi")
+        layer(root.flm.filter(function(f) { return f.model }), "flm")
         var out = []
         for (var pid in byPid) out.push(byPid[pid])
         return out
@@ -92,6 +99,9 @@ PlasmoidItem {
     property var histTemp: []
     property var histPower: []
     property var histCpu: []
+    property var histNpu: []
+    // arrival time (ms) of each history point, for smooth time-based scrolling
+    property var histTimes: []
     property int revision: 0
 
     property bool pollerAlive: false
@@ -120,6 +130,14 @@ PlasmoidItem {
         return Number(v).toFixed(digits === undefined ? 0 : digits) + (suffix || "");
     }
 
+    // "   device: NPU|GPU", only on hosts that have an NPU (otherwise nothing,
+    // so GPU-only setups stay uncluttered).
+    function deviceTag(entry) {
+        if (!root.hasNpu) return "";
+        var onNpu = entry.kind === "flm" || (entry.type && entry.type.indexOf("npu") !== -1);
+        return "   device: " + (onNpu ? "NPU" : "GPU");
+    }
+
     function mb(v) {
         if (v === null || v === undefined) return "N/A";
         return (v / 1024).toFixed(1) + " GiB";
@@ -145,12 +163,14 @@ PlasmoidItem {
     function pushSample(s) {
         if (s.gpu) gpu = s.gpu;
         if (s.sys) sys = s.sys;
+        npu = s.npu || null;
         if (s.llm) {
             llama = s.llm.llama || [];
             ollama = s.llm.ollama || [];
             vllm = s.llm.vllm || [];
             sglang = s.llm.sglang || [];
             tgi = s.llm.tgi || [];
+            flm = s.llm.flm || [];
             ollamaModels = s.llm.ollama_models || [];
         }
         gpuProcs = s.gpu_procs || [];
@@ -158,7 +178,9 @@ PlasmoidItem {
         if (s.can_kill_all !== undefined) canKillAll = s.can_kill_all;
         function push(arr, v) {
             arr.push(v === null || v === undefined ? null : Number(v));
-            while (arr.length > windowSize) arr.shift();
+            // a few points beyond the visible window stay in the buffer so the
+            // line keeps running off the left edge instead of snapping
+            while (arr.length > windowSize + 4) arr.shift();
         }
         push(histUtil, gpu.util);
         push(histMem, (gpu.mem_used !== null && gpu.mem_total)
@@ -168,6 +190,8 @@ PlasmoidItem {
         push(histPower, (gpu.power_w !== null)
                          ? Math.min(100, gpu.power_w * 100 / pwrMax) : null);
         push(histCpu, sys.cpu);
+        push(histNpu, npuReadable ? npu.util : null);
+        push(histTimes, Date.now());
         revision++;
     }
 
@@ -279,7 +303,7 @@ PlasmoidItem {
                 Sparkline {
                     anchors.fill: parent
                     visible: Plasmoid.configuration.showGpu
-                    values: root.histUtil
+                    values: root.histUtil; times: root.histTimes; windowSec: root.windowSize - 1
                     revision: root.revision
                     maximum: 100
                     lineColor: "#4d9fff"
@@ -288,7 +312,7 @@ PlasmoidItem {
                 Sparkline {
                     anchors.fill: parent
                     visible: Plasmoid.configuration.showMem
-                    values: root.histMem
+                    values: root.histMem; times: root.histTimes; windowSec: root.windowSize - 1
                     revision: root.revision
                     maximum: 100
                     lineColor: "#e8c33a"
@@ -297,7 +321,7 @@ PlasmoidItem {
                 Sparkline {
                     anchors.fill: parent
                     visible: Plasmoid.configuration.showTemp
-                    values: root.histTemp
+                    values: root.histTemp; times: root.histTimes; windowSec: root.windowSize - 1
                     revision: root.revision
                     maximum: root.tempMax
                     lineColor: "#b07fe8"
@@ -306,7 +330,7 @@ PlasmoidItem {
                 Sparkline {
                     anchors.fill: parent
                     visible: Plasmoid.configuration.showPower
-                    values: root.histPower
+                    values: root.histPower; times: root.histTimes; windowSec: root.windowSize - 1
                     revision: root.revision
                     maximum: 100
                     lineColor: "#3ddc84"
@@ -315,10 +339,19 @@ PlasmoidItem {
                 Sparkline {
                     anchors.fill: parent
                     visible: Plasmoid.configuration.showCpu
-                    values: root.histCpu
+                    values: root.histCpu; times: root.histTimes; windowSec: root.windowSize - 1
                     revision: root.revision
                     maximum: 100
                     lineColor: "#ff8c42"
+                    capacity: root.windowSize
+                }
+                Sparkline {
+                    anchors.fill: parent
+                    visible: root.npuReadable && Plasmoid.configuration.showNpu
+                    values: root.histNpu; times: root.histTimes; windowSec: root.windowSize - 1
+                    revision: root.revision
+                    maximum: 100
+                    lineColor: "#ec60a0"
                     capacity: root.windowSize
                 }
 
@@ -339,13 +372,13 @@ PlasmoidItem {
                 Repeater {
                     model: [
                         { label: "GPU", color: "#4d9fff", prop: "showGpu" },
-                        { label: "MEM", color: "#e8c33a", prop: "showMem" },
+                        { label: "GTT", color: "#e8c33a", prop: "showMem" },
                         { label: "TMP", color: "#b07fe8", prop: "showTemp" },
                         { label: "PWR", color: "#3ddc84", prop: "showPower" },
                         { label: "CPU", color: "#ff8c42", prop: "showCpu" },
-                    ]
+                    ].concat(root.hasNpu ? [{ label: root.npuReadable ? "NPU" : "NPU N/A", color: "#ec60a0", prop: "showNpu" }] : [])
                     delegate: Item {
-                        width: 28
+                        width: modelData.label.length > 3 ? 52 : 28
                         height: 10
                         Row {
                             anchors.fill: parent
@@ -382,8 +415,8 @@ PlasmoidItem {
     // is what keeps the dialog from ending up wider than the ScrollView
     // actually filling it.
     fullRepresentation: Item {
-        Layout.minimumWidth: inPanel ? 360 : 400
-        Layout.preferredWidth: inPanel ? 430 : 490
+        Layout.minimumWidth: inPanel ? 420 : 440
+        Layout.preferredWidth: inPanel ? 480 : 520
         Layout.minimumHeight: 320
         Layout.preferredHeight: inPanel ? 440 : 540
 
@@ -500,10 +533,15 @@ PlasmoidItem {
                 // Not Layout.fillWidth: the row is only as wide as its 5 fixed-size
                 // rings need — Qt.AlignHCenter centers that within the popup instead
                 // of leaving it left-anchored with dead space to the right.
+                // fillWidth + side margins: the rings flex between 44 and 72 px so the
+                // row never touches the popup edges, however many gauges there are
+                // (an NPU adds a sixth).
                 RowLayout {
-                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 14
+                    Layout.rightMargin: 14
                     Layout.bottomMargin: 4
-                    spacing: 8
+                    spacing: 6
 
                     Repeater {
                         model: [
@@ -524,9 +562,17 @@ PlasmoidItem {
                             { key: "showCpu", label: "CPU", color: "#ff8c42",
                               ratio: (root.sys.cpu || 0) / 100,
                               text: root.fmt(root.sys.cpu, "%") },
-                        ]
+                        ].concat(root.hasNpu ? [
+                            { key: "showNpu", label: "NPU", color: "#ec60a0",
+                              ratio: root.npuReadable ? (root.npu.util || 0) / 100 : 0,
+                              text: root.npuReadable ? root.fmt(root.npu.util, "%") : "N/A" },
+                        ] : [])
                         delegate: Item {
-                            Layout.preferredWidth: 64; Layout.preferredHeight: 64
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 44
+                            Layout.preferredWidth: 64
+                            Layout.maximumWidth: 72
+                            Layout.preferredHeight: 64
                             Ring {
                                 anchors.fill: parent
                                 ratio: modelData.ratio
@@ -591,11 +637,12 @@ PlasmoidItem {
                     Item {
                         anchors.fill: parent
                         anchors.margins: 2
-                        Sparkline { anchors.fill: parent; visible: Plasmoid.configuration.showGpu; values: root.histUtil; revision: root.revision; maximum: 100; lineColor: "#4d9fff"; capacity: root.windowSize }
-                        Sparkline { anchors.fill: parent; visible: Plasmoid.configuration.showMem; values: root.histMem; revision: root.revision; maximum: 100; lineColor: "#e8c33a"; capacity: root.windowSize }
-                        Sparkline { anchors.fill: parent; visible: Plasmoid.configuration.showTemp; values: root.histTemp; revision: root.revision; maximum: root.tempMax; lineColor: "#b07fe8"; capacity: root.windowSize }
-                        Sparkline { anchors.fill: parent; visible: Plasmoid.configuration.showPower; values: root.histPower; revision: root.revision; maximum: 100; lineColor: "#3ddc84"; capacity: root.windowSize }
-                        Sparkline { anchors.fill: parent; visible: Plasmoid.configuration.showCpu; values: root.histCpu; revision: root.revision; maximum: 100; lineColor: "#ff8c42"; capacity: root.windowSize }
+                        Sparkline { anchors.fill: parent; visible: Plasmoid.configuration.showGpu; values: root.histUtil; times: root.histTimes; windowSec: root.windowSize - 1; revision: root.revision; maximum: 100; lineColor: "#4d9fff"; capacity: root.windowSize }
+                        Sparkline { anchors.fill: parent; visible: Plasmoid.configuration.showMem; values: root.histMem; times: root.histTimes; windowSec: root.windowSize - 1; revision: root.revision; maximum: 100; lineColor: "#e8c33a"; capacity: root.windowSize }
+                        Sparkline { anchors.fill: parent; visible: Plasmoid.configuration.showTemp; values: root.histTemp; times: root.histTimes; windowSec: root.windowSize - 1; revision: root.revision; maximum: root.tempMax; lineColor: "#b07fe8"; capacity: root.windowSize }
+                        Sparkline { anchors.fill: parent; visible: Plasmoid.configuration.showPower; values: root.histPower; times: root.histTimes; windowSec: root.windowSize - 1; revision: root.revision; maximum: 100; lineColor: "#3ddc84"; capacity: root.windowSize }
+                        Sparkline { anchors.fill: parent; visible: Plasmoid.configuration.showCpu; values: root.histCpu; times: root.histTimes; windowSec: root.windowSize - 1; revision: root.revision; maximum: 100; lineColor: "#ff8c42"; capacity: root.windowSize }
+                        Sparkline { anchors.fill: parent; visible: root.npuReadable && Plasmoid.configuration.showNpu; values: root.histNpu; times: root.histTimes; windowSec: root.windowSize - 1; revision: root.revision; maximum: 100; lineColor: "#ec60a0"; capacity: root.windowSize }
                     }
                 }
 
@@ -611,6 +658,7 @@ PlasmoidItem {
                                   : modelData.kind === "vllm" ? "#b07fe8"
                                   : modelData.kind === "sglang" ? "#3ddc84"
                                   : modelData.kind === "tgi" ? "#ff8c42"
+                                  : modelData.kind === "flm" ? "#ec60a0"
                                   : Kirigami.Theme.positiveTextColor
                         // pid/port/model filename are already in the gray
                         // cmdline/flags text below for llama/vllm, so
@@ -626,6 +674,8 @@ PlasmoidItem {
                                     ? "SGLang" + (modelData.model ? "  [" + modelData.model + "]" : "")
                               : modelData.kind === "tgi"
                                     ? "Hugging Face TGI" + (modelData.model ? "  [" + modelData.model + "]" : "")
+                              : modelData.kind === "flm"
+                                    ? "FastFlowLM" + (modelData.model ? "  [" + modelData.model + "]" : "")
                               : modelData.name
                         pid: modelData.pid
                         // Show the kill button if we have passwordless sudo
@@ -641,23 +691,27 @@ PlasmoidItem {
                         restartable: !!modelData.unit
                                      && (modelData.unit.indexOf("user:") === 0 || root.canKillAll)
                         onRestartRequested: (p) => root.restartProcess(p)
+                        device: (root.hasNpu && (modelData.kind === "flm" || (modelData.type && modelData.type.indexOf("npu") !== -1))) ? "NPU" : "GPU"
                         gpuPct: modelData.gpu_pct
                         vramKb: modelData.vram_kb
                         cpuPct: modelData.cpu_pct
                         hostMemKb: modelData.rss_kb
                         subtitle: modelData.kind === "llama"
                                       ? "user: " + (modelData.user || "N/A")
+                                        + root.deviceTag(modelData)
                                         + "   ngl: " + (modelData.ngl || "N/A")
                                         + "   ctx: " + (modelData.ctx || "N/A")
                                         + "   parallel: " + (modelData.parallel || "N/A")
                                         + "   threads: " + (modelData.threads || "N/A")
                                         + "   pid: " + modelData.pid
                                    : modelData.kind === "ollama" || modelData.kind === "vllm"
-                                      || modelData.kind === "sglang" || modelData.kind === "tgi"
+                                      || modelData.kind === "sglang" || modelData.kind === "tgi" || modelData.kind === "flm"
                                       ? "user: " + (modelData.user || "N/A")
+                                        + root.deviceTag(modelData)
                                         + "   pid: " + modelData.pid
                                   : "user: " + modelData.user
                                     + "   type: " + (modelData.type && modelData.type.length ? modelData.type.join("+") : "N/A")
+                                    + root.deviceTag(modelData)
                                     + "   pid: " + modelData.pid
                         cmdline: modelData.kind === "ollama" ? modelData.cmdline : ""
                         argv: modelData.argv || []
@@ -689,6 +743,8 @@ PlasmoidItem {
     toolTipItem: ToolTipView {
         gpu: root.gpu
         sys: root.sys
+        npu: root.npu
+        flm: root.flm
         llama: root.llama
         ollamaModels: root.ollamaModels
     }

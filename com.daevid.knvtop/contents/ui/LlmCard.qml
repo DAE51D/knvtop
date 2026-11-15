@@ -31,6 +31,8 @@ Rectangle {
     // restricts to same-uid-or-root, so a process owned by a different
     // user than this poller (a real, current case: llama.cpp running
     // under its own service account) always shows N/A for those two.
+    // "NPU" for NPU-backed processes; stays "GPU" everywhere else.
+    property string device: "GPU"
     property var gpuPct: null
     property var vramKb: null
     property var cpuPct: null
@@ -115,8 +117,8 @@ Rectangle {
             Layout.fillWidth: true
             visible: card.gpuPct !== null || card.vramKb !== null
                   || card.cpuPct !== null || card.hostMemKb !== null
-            text: "GPU (proc): " + card.fmtPct(card.gpuPct)
-                + "   GPU MEM (proc): " + card.fmtMiB(card.vramKb)
+            text: card.device + " (proc): " + card.fmtPct(card.gpuPct)
+                + "   " + card.device + " MEM (proc): " + card.fmtMiB(card.vramKb)
                 + "   CPU: " + card.fmtPct(card.cpuPct)
                 + "   RSS: " + card.fmtMiB(card.hostMemKb)
             color: "#aeb4bb"

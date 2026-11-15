@@ -26,7 +26,7 @@ calls the widget category)
 ## Tags
 
 gpu, nvtop, monitor, system-monitor, llm, ollama, llama.cpp, vllm, sglang,
-tgi, nvstats-service, amdgpu, process-monitor, plasmoid
+tgi, npu, fastflowlm, nvstats-service, amdgpu, process-monitor, plasmoid
 
 ## Full description
 
@@ -35,8 +35,8 @@ Copy everything between the two `---` lines, nothing else:
 ---
 knvtop is a KDE Plasma 6 panel widget that brings nvtop-style GPU
 telemetry to your desktop: a live multi-line graph (utilization, memory,
-temperature, power, plus CPU%) that expands into a detailed process view
-on click.
+temperature, power, plus CPU%, and the NPU on machines that have one) that
+expands into a detailed process view on click.
 
 Two views in one widget. AI/LLM focus (default) recognizes running
 llama.cpp, Ollama, vLLM, SGLang, and Hugging Face TGI model servers and

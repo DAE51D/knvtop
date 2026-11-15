@@ -1,25 +1,35 @@
 import QtQuick
 import QtQuick.Layouts
-import org.kde.plasma.core as PlasmaCore
-import org.kde.plasma.plasmoid
 
+// Hover tooltip. It paints its own dark card instead of drawing on Plasma's popup
+// background, so the colors read the same on light and dark themes (the fixed grays
+// used before were nearly invisible on a light theme).
 Item {
     id: tip
 
     property var gpu: ({ util: null, mem_used: null, mem_total: null,
                           temp: null, power_w: null })
     property var sys: ({ ram_used: 0, ram_total: 0, cpu: null, load1: 0 })
+    property var npu: null   // null on hosts without an NPU: no NPU row at all
     property var llama: []
+    property var flm: []
     property var ollamaModels: []
+
+    readonly property bool hasNpu: !!(npu && npu.present)
+    readonly property bool npuReadable: hasNpu && !!npu.readable
+
+    readonly property color textColor: "#e6e9ed"
+    readonly property color dimColor: "#8d949c"
+    readonly property color trackColor: "#272d34"
 
     function mb(v) {
         if (v === null || v === undefined) return "N/A";
-        return (v / 1024).toFixed(1) + " GiB";
+        return (v / 1024).toFixed(1);
     }
 
-    function bytes(v) {
+    function gib(v) {
         if (v === null || v === undefined) return "N/A";
-        return (v / 1073741824).toFixed(1) + " GiB";
+        return (v / 1073741824).toFixed(1);
     }
 
     function fmt(v, suffix, digits) {
@@ -27,208 +37,151 @@ Item {
         return Number(v).toFixed(digits === undefined ? 0 : digits) + (suffix || "");
     }
 
-    implicitWidth: layout.implicitWidth
-    implicitHeight: layout.implicitHeight
+    function clamp01(v) { return Math.max(0, Math.min(1, v || 0)); }
 
-    ColumnLayout {
-        id: layout
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        spacing: 6
-        width: 280
+    implicitWidth: 300
+    implicitHeight: card.implicitHeight
 
-        RowLayout {
+    // One metric: colored label, thin bar, value text (right aligned).
+    component MetricRow: RowLayout {
+        id: row
+        property string label: ""
+        property color accent: "#4d9fff"
+        property real ratio: 0
+        property string value: ""
+        property string detail: ""
+
+        Layout.fillWidth: true
+        spacing: 8
+
+        Text {
+            text: row.label
+            color: row.accent
+            font.bold: true
+            font.pointSize: 8
+            Layout.preferredWidth: 30
+        }
+        Rectangle {
             Layout.fillWidth: true
-            Text {
-                text: "knvtop"
-                font.bold: true
-                font.pointSize: 11
+            Layout.preferredHeight: 6
+            radius: 3
+            color: tip.trackColor
+            Rectangle {
+                width: Math.max(parent.height, parent.width * tip.clamp01(row.ratio))
+                visible: row.ratio > 0
+                height: parent.height
+                radius: 3
+                color: row.accent
+            }
+        }
+        Text {
+            text: row.value
+            color: tip.textColor
+            font.bold: true
+            font.pointSize: 9
+            horizontalAlignment: Text.AlignRight
+            Layout.preferredWidth: 44
+        }
+        Text {
+            text: row.detail
+            color: tip.dimColor
+            font.pointSize: 8
+            horizontalAlignment: Text.AlignRight
+            Layout.preferredWidth: 92
+            elide: Text.ElideRight
+        }
+    }
+
+    Rectangle {
+        id: card
+        anchors.fill: parent
+        implicitHeight: col.implicitHeight + 20
+        color: "#14181d"
+        radius: 8
+
+        ColumnLayout {
+            id: col
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 7
+
+            RowLayout {
                 Layout.fillWidth: true
+                Text {
+                    text: "knvtop"
+                    color: tip.textColor
+                    font.bold: true
+                    font.pointSize: 10
+                    Layout.fillWidth: true
+                }
+                Text {
+                    visible: tip.llama.length > 0
+                    text: tip.llama.length + " llama.cpp"
+                    color: "#4d9fff"
+                    font.pointSize: 8
+                }
+                Text {
+                    visible: tip.flm.length > 0
+                    text: tip.flm.length + " FastFlowLM"
+                    color: "#ec60a0"
+                    font.pointSize: 8
+                }
             }
-            Text {
-                text: tip.llama.length ? tip.llama.length + " llama.cpp" : ""
-                color: "#4d9fff"
-                font.pointSize: 9
-            }
-        }
 
-        // GPU row
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 4
-            Text {
-                text: "GPU"
-                color: "#8a9199"
-                font.pointSize: 9
-                Layout.preferredWidth: 40
+            MetricRow {
+                label: "GPU"; accent: "#4d9fff"
+                ratio: (tip.gpu.util || 0) / 100
+                value: tip.fmt(tip.gpu.util, "%")
+                detail: tip.gpu.clock_gfx ? tip.gpu.clock_gfx + " MHz" : ""
             }
-            Text {
-                text: tip.fmt(tip.gpu.util, "%")
-                color: "#4d9fff"
-                font.bold: true
-                font.pointSize: 10
-                Layout.preferredWidth: 36
+            MetricRow {
+                label: "GTT"; accent: "#e8c33a"
+                ratio: (tip.gpu.mem_used !== null && tip.gpu.mem_total) ? tip.gpu.mem_used / tip.gpu.mem_total : 0
+                value: (tip.gpu.mem_used !== null && tip.gpu.mem_total)
+                       ? tip.fmt(tip.gpu.mem_used * 100 / tip.gpu.mem_total, "%") : "N/A"
+                detail: tip.mb(tip.gpu.mem_used) + " / " + tip.mb(tip.gpu.mem_total) + " GiB"
             }
-            Text {
-                text: tip.gpu.temp !== null ? tip.fmt(tip.gpu.temp, "°C", 0) : ""
-                color: "#6a7078"
-                font.pointSize: 9
+            MetricRow {
+                label: "TMP"; accent: "#b07fe8"
+                ratio: Math.min(1, (tip.gpu.temp || 0) / 100)
+                value: tip.fmt(tip.gpu.temp, "°")
+                detail: ""
             }
-            Item { Layout.fillWidth: true }
-            Text {
-                text: tip.gpu.mem_used !== null && tip.gpu.mem_total
-                      ? tip.mb(tip.gpu.mem_used) + "/" + tip.mb(tip.gpu.mem_total)
-                      : ""
-                color: "#e8c33a"
-                font.pointSize: 9
+            MetricRow {
+                label: "PWR"; accent: "#3ddc84"
+                ratio: (tip.gpu.power_w || 0) / (tip.gpu.power_cap_w || 100)
+                value: tip.fmt(tip.gpu.power_w, "W")
+                detail: tip.gpu.power_cap_w ? "of " + tip.fmt(tip.gpu.power_cap_w, "W") : ""
             }
-        }
+            MetricRow {
+                label: "CPU"; accent: "#ff8c42"
+                ratio: (tip.sys.cpu || 0) / 100
+                value: tip.fmt(tip.sys.cpu, "%")
+                detail: "load " + Number(tip.sys.load1 || 0).toFixed(2)
+            }
+            MetricRow {
+                visible: tip.hasNpu
+                label: "NPU"; accent: "#ec60a0"
+                ratio: tip.npuReadable ? (tip.npu.util || 0) / 100 : 0
+                value: tip.npuReadable ? tip.fmt(tip.npu.util, "%") : "N/A"
+                detail: tip.npuReadable
+                        ? (tip.npu.clock_mhz ? tip.npu.clock_mhz + " MHz" : "")
+                        : ((tip.npu && tip.npu.reason) ? tip.npu.reason.split(":")[0] : "")
+            }
+            MetricRow {
+                label: "RAM"; accent: "#89929c"
+                ratio: tip.sys.ram_total ? tip.sys.ram_used / tip.sys.ram_total : 0
+                value: tip.sys.ram_total ? tip.fmt(tip.sys.ram_used * 100 / tip.sys.ram_total, "%") : "N/A"
+                detail: tip.gib(tip.sys.ram_used) + " / " + tip.gib(tip.sys.ram_total) + " GiB"
+            }
 
-        // GPU bar
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 4
-            color: "#2a2f35"
-            radius: 2
-            Rectangle {
-                width: parent.width * ((tip.gpu.util || 0) / 100)
-                height: parent.height
-                color: "#4d9fff"
-                radius: 2
-            }
-        }
-
-        // MEM bar
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 4
-            color: "#2a2f35"
-            radius: 2
-            Rectangle {
-                width: parent.width * ((tip.gpu.mem_used !== null && tip.gpu.mem_total)
-                                        ? tip.gpu.mem_used / tip.gpu.mem_total : 0)
-                height: parent.height
-                color: "#e8c33a"
-                radius: 2
-            }
-        }
-
-        // PWR row
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 4
             Text {
-                text: "PWR"
-                color: "#8a9199"
-                font.pointSize: 9
-                Layout.preferredWidth: 40
+                text: "Click for details"
+                color: tip.dimColor
+                font.pointSize: 7
+                Layout.alignment: Qt.AlignHCenter
+                Layout.topMargin: 1
             }
-            Text {
-                text: tip.fmt(tip.gpu.power_w, "W", 1)
-                color: "#3ddc84"
-                font.bold: true
-                font.pointSize: 10
-            }
-            Item { Layout.fillWidth: true }
-            Text {
-                text: tip.gpu.power_cap_w ? "/" + tip.fmt(tip.gpu.power_cap_w, "W") : ""
-                color: "#6a7078"
-                font.pointSize: 9
-            }
-        }
-
-        // CPU row
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 4
-            Text {
-                text: "CPU"
-                color: "#8a9199"
-                font.pointSize: 9
-                Layout.preferredWidth: 40
-            }
-            Text {
-                text: tip.fmt(tip.sys.cpu, "%", 1)
-                color: "#ff8c42"
-                font.bold: true
-                font.pointSize: 10
-            }
-            Item { Layout.fillWidth: true }
-            Text {
-                text: "load " + tip.sys.load1.toFixed(2)
-                color: "#6a7078"
-                font.pointSize: 9
-            }
-        }
-
-        // CPU bar
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 4
-            color: "#2a2f35"
-            radius: 2
-            Rectangle {
-                width: parent.width * ((tip.sys.cpu || 0) / 100)
-                height: parent.height
-                color: "#ff8c42"
-                radius: 2
-            }
-        }
-
-        // RAM row
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 4
-            Text {
-                text: "RAM"
-                color: "#8a9199"
-                font.pointSize: 9
-                Layout.preferredWidth: 40
-            }
-            Text {
-                text: tip.bytes(tip.sys.ram_used) + "/" + tip.bytes(tip.sys.ram_total)
-                color: "#c8ccd2"
-                font.pointSize: 9
-            }
-        }
-
-        // RAM bar
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 4
-            color: "#2a2f35"
-            radius: 2
-            Rectangle {
-                width: parent.width * ((tip.sys.ram_total ? tip.sys.ram_used / tip.sys.ram_total : 0))
-                height: parent.height
-                color: "#b07fe8"
-                radius: 2
-            }
-        }
-
-        // LLM summary
-        Text {
-            Layout.fillWidth: true
-            visible: tip.llama.length > 0 || tip.ollamaModels.length > 0
-            text: {
-                var parts = [];
-                if (tip.llama.length)
-                    parts.push(tip.llama.length + " llama.cpp" +
-                               (tip.llama[0].alias ? " [" + tip.llama[0].alias + "]" : ""));
-                if (tip.ollamaModels.length)
-                    parts.push(tip.ollamaModels.length + " ollama model(s)");
-                return parts.join("  ");
-            }
-            color: "#6a7078"
-            font.pointSize: 8
-        }
-
-        Text {
-            text: "Click for details"
-            color: "#4a4f55"
-            font.pointSize: 8
-            Layout.topMargin: 4
         }
     }
 }

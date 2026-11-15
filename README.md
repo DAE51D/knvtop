@@ -1,9 +1,9 @@
 # knvtop
 
 A KDE Plasma 6 widget that shows nvtop-style GPU telemetry (utilization,
-memory, temperature, power, plus CPU%) as a compact multi-line graph in the
+memory, temperature, power, plus CPU%, and the NPU where there is one) as a compact multi-line graph in the
 panel, expanding into a detail popup with per-process cards for local LLM
-inference servers (llama.cpp, Ollama, vLLM, SGLang, and Hugging Face TGI) and — optionally — every
+inference servers (llama.cpp, Ollama, vLLM, SGLang, Hugging Face TGI, and FastFlowLM on the NPU) and — optionally — every
 GPU-using process on the system, filterable by user and engine type.
 
 Tested on an AMD APU with unified memory (Strix Halo / Radeon 8060S). The
@@ -59,10 +59,11 @@ For an AI-assisted installation, point your coding agent at the [knvtop install 
   to sysfs (`/sys/class/drm/card*/device/gpu_busy_percent` + the hwmon
   resolved by `name == "amdgpu"`, not index, so it survives reboots) if
   `amd-smi` isn't available.
+- **NPU** (optional, AMD XDNA/Ryzen AI): the shared nvstats-service detects it. With an NPU the widget adds a pink NPU ring, graph line, legend entry, tooltip row, and an NPU/GPU label on each process card; an NPU that exists but can't be read shows N/A (usually the `render` group). Without an NPU none of this appears. The driver has no busy counter, so the value is an activity estimate (see the nvstats-service README), and NPU memory is the same unified system RAM as the CPU and GPU. Needs nvstats-service 1.1.0 or newer.
 - **System** (RAM/swap/load/CPU%): `/proc/meminfo`, `/proc/loadavg`,
   `/proc/stat` (CPU% is a delta between consecutive samples).
 - **LLM processes**: `/proc/*/cmdline` recognizes llama.cpp, Ollama, vLLM,
-  SGLang, and Hugging Face TGI launchers; Ollama's loaded-model list comes
+  SGLang, Hugging Face TGI, and FastFlowLM (NPU) launchers; Ollama's loaded-model list comes
   from its `/api/ps` HTTP endpoint. Desktop clients such as VS Code are not
   treated as model processes.
 - **Generic GPU process list** (the "AI/LLM processes only" checkbox, off):

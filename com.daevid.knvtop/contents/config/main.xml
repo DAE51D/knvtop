@@ -24,6 +24,10 @@
         <entry name="showCpu" type="Bool">
             <default>true</default>
         </entry>
+        <!-- Only has an effect on hosts that report an NPU. -->
+        <entry name="showNpu" type="Bool">
+            <default>true</default>
+        </entry>
 
         <!-- Process list filters. llmOnly true = today's default behavior
              (only recognized llama.cpp/ollama/vllm entries). false shows
