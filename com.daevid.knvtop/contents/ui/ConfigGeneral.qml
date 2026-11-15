@@ -13,6 +13,7 @@ KCM.SimpleKCM {
     property alias cfg_showTemp: tempBox.checked
     property alias cfg_showPower: powerBox.checked
     property alias cfg_showCpu: cpuBox.checked
+    property alias cfg_showNpu: npuBox.checked
     property alias cfg_llmOnly: llmOnlyBox.checked
     property string cfg_filterUser
     property string cfg_filterType
@@ -22,6 +23,9 @@ KCM.SimpleKCM {
     // not a machine-specific guess. This stays reusable across installations
     // with whatever account layout they happen to use.
     property var knownUsers: []
+    // True only when the service reports an NPU; the NPU checkbox and the NPU type
+    // filter are hidden otherwise, so machines without one see no NPU options.
+    property bool hasNpu: false
 
     function refreshKnownUsers() {
         var msg = new PlasmaDBus.dbusMessage({
@@ -35,13 +39,14 @@ KCM.SimpleKCM {
             if (reply.isError || !reply.values || reply.values.length === 0) return
             try {
                 var s = JSON.parse(reply.values[0])
+                page.hasNpu = !!(s.npu && s.npu.present)
                 var seen = {}
                 var procs = s.gpu_procs || []
                 for (var i = 0; i < procs.length; i++) {
                     if (procs[i].user) seen[procs[i].user] = true
                 }
                 var llm = s.llm || {}
-                ["llama", "ollama", "vllm", "sglang", "tgi"].forEach(function(kind) {
+                ["llama", "ollama", "vllm", "sglang", "tgi", "flm"].forEach(function(kind) {
                     (llm[kind] || []).forEach(function(e) {
                         if (e.user) seen[e.user] = true
                     })
@@ -79,6 +84,11 @@ KCM.SimpleKCM {
             id: cpuBox
             text: "CPU utilization"
         }
+        QQC2.CheckBox {
+            id: npuBox
+            visible: page.hasNpu
+            text: "NPU utilization"
+        }
 
         Item {
             Kirigami.FormData.isSection: false
@@ -115,7 +125,7 @@ KCM.SimpleKCM {
                 { key: "both", label: "Both" },
                 { key: "graphic", label: "Graphic" },
                 { key: "compute", label: "Compute" }
-            ]
+            ].concat(page.hasNpu ? [{ key: "npu", label: "NPU" }] : [])
             currentIndex: Math.max(0, indexOfValue(page.cfg_filterType))
             onActivated: page.cfg_filterType = currentValue
         }

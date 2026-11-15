@@ -43,7 +43,7 @@ PlasmoidItem {
         var user = Plasmoid.configuration.filterUser
         if (user && user !== "All Users" && entry.user !== user) return false
         var type = Plasmoid.configuration.filterType
-        if ((type === "graphic" || type === "compute")
+        if ((type === "graphic" || type === "compute" || type === "npu")
                 && (!entry.type || entry.type.indexOf(type) === -1)) return false
         return true
     }

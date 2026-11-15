@@ -39,7 +39,7 @@
             <default>All Users</default>
         </entry>
         <entry name="filterType" type="String">
-            <!-- one of: both, graphic, compute -->
+            <!-- one of: both, graphic, compute, npu (npu only on hosts with an NPU) -->
             <default>both</default>
         </entry>
     </group>
