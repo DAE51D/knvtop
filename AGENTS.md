@@ -25,24 +25,22 @@ Project-specific:
   then let the user add it via right-click → Add Widgets.
 - `plasma-org.kde.plasma.desktop-appletsrc` is under etckeeper-style git
   backup via `~` — if you must edit it, commit the change deliberately.
-- **`com.daevid.knvtop/metadata.json`'s `KPlugin.Version` tracks what is
-  published on opendesktop/KDE Store** (https://www.opendesktop.org/p/2370069/),
-  NOT the number of commits or work sessions. It is the version Plasma shows
-  in "Add Widgets" and Settings → About. The rule:
-  - Published releases so far: 1.0.0, 1.1.0, 1.1.1, 1.2.0. The next release is
-    **1.3.0** (the version in the tree until it is uploaded).
-  - **Do not bump the version per commit or per feature.** Everything that
-    lands between two uploads ships under the one next version. Bump only
-    *after* a release is uploaded, to the next number (minor for new
-    features, patch for a fix-only release), and record the uploaded one in
-    the list above.
-  - If unsure what the next number should be, ask the user — an inflated
-    version is hard to walk back once it's published (it was inflated to
-    1.4.0 once by bumping per-feature; reset to 1.2.0 on 2026-10-16).
+- **Versioning.** `com.daevid.knvtop/metadata.json`'s `KPlugin.Version` is the
+  version Plasma shows in "Add Widgets" and Settings → About, and it must match
+  what is published on the KDE Store (https://www.opendesktop.org/p/2370069/)
+  and the GitHub release.
+  - Published so far: 1.0.0, 1.1.0, 1.1.1, 1.2.0, 1.3.0 (1.3.0 is the nvstats-service
+    rewrite). **Current tree: 1.4.0** (NPU support, smooth graphs, new tooltip).
+  - When preparing a release, bump `Version` (minor for features, patch for
+    fix-only), add a changelog entry to `STORE_LISTING.md`, and update the README.
+    Never reuse a number that is already published; if unsure, ask.
+  - Release steps: commit, then `scripts/build-plasmoid.sh` (it packages
+    `HEAD`, so uncommitted changes are NOT in it; `*.plasmoid` is gitignored),
+    tag `vX.Y.Z`, push to the `github` remote, and attach the `.plasmoid` to a
+    GitHub release. The Gitea `origin` is a read-only mirror of GitHub, so
+    don't push there. The KDE Store upload is done by the owner by hand.
   - The dev build stamp from `scripts/deploy-dev.sh` is what distinguishes
-    work-in-progress builds, so the release number doesn't have to.
-  - Package for upload: commit, then `scripts/build-plasmoid.sh` (it
-    packages `HEAD`, so uncommitted changes are NOT in it).
+    work-in-progress builds between releases.
 
 ## Gotcha: the QML D-Bus type never delivers method arguments
 

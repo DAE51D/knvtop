@@ -3,11 +3,11 @@
 # build timestamp, so the widget's About page (Settings -> About) shows
 # exactly which build is running:
 #
-#     knvtop 1.3.0+20261016.1905.a8414a5-dirty
+#     knvtop 1.4.0+20261115.1303.6799a9b-dirty
 #
 # Only the *installed copy's* metadata.json is stamped. The source tree's
-# Version stays a clean "1.3.0" (what build-plasmoid.sh packages and what
-# AGENTS.md says to bump), so release builds never carry a timestamp.
+# Version stays a clean "1.4.0" (what build-plasmoid.sh packages; see the
+# Versioning note in AGENTS.md), so release builds never carry a timestamp.
 #
 # Stamp format: <Version>+<YYYYMMDD>.<HHMM>.<git short sha>[-dirty]
 #   -dirty = uncommitted changes in the tree, i.e. the sha alone does not

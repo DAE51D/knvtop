@@ -72,6 +72,23 @@ https://github.com/DAE51D/knvtop
 
 ## Changelog (paste into the "Changelog" field when uploading a release)
 
+1.4.0 — NPU SUPPORT, SMOOTHER GRAPHS, NEW TOOLTIP:
+
+---
+- Adds optional NPU support (AMD XDNA / Ryzen AI): a pink NPU ring, graph
+  line, legend entry and tooltip row, an NPU/GPU label on each process card,
+  and FastFlowLM model cards. Everything NPU-related is hidden on machines
+  without an NPU and shows N/A if an NPU exists but cannot be read. Requires
+  nvstats-service 1.1.0 or newer for the NPU.
+- Graphs now scroll continuously between samples instead of jumping once a
+  second, and the left edge no longer snaps.
+- The hover tooltip is a dark card that is readable on light and dark themes,
+  and now has a Temp row.
+- The popup's ring row has side margins and the popup is a little wider.
+- Legend order and colors match the onvtop and turzx-nvtop companions; the
+  memory line is labeled GTT.
+---
+
 1.3.0 — BREAKING BACKEND UPDATE:
 
 ---

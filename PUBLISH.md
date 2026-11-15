@@ -68,3 +68,17 @@ API change from 1.2.0.
 If anything in the "local prep" half unexpectedly trips a guardrail too,
 skip it here and do it yourself — no need to fight it, just note which
 item and move to the next one.
+
+## Releasing a new version
+
+1. Bump `KPlugin.Version` in `com.daevid.knvtop/metadata.json`, add the entry to
+   the changelog in `STORE_LISTING.md`, and update `README.md`.
+2. Commit, then `scripts/build-plasmoid.sh` to build `knvtop-<version>.plasmoid`
+   from `HEAD` (the `.plasmoid` is gitignored).
+3. Tag `v<version>`, push `main` and the tag to the `github` remote (the Gitea
+   `origin` is a read-only mirror), and create a GitHub release with the
+   `.plasmoid` attached.
+4. Owner: upload the same file to the KDE Store and paste the changelog.
+
+Status: 1.3.0 is published on the KDE Store. 1.4.0 (NPU support) is released on
+GitHub; the KDE Store upload is pending.
