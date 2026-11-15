@@ -42,9 +42,19 @@ PlasmoidItem {
     function matchesFilters(entry) {
         var user = Plasmoid.configuration.filterUser
         if (user && user !== "All Users" && entry.user !== user) return false
-        var type = Plasmoid.configuration.filterType
-        if ((type === "graphic" || type === "compute" || type === "npu")
-                && (!entry.type || entry.type.indexOf(type) === -1)) return false
+        // Type filter: with every box checked (the default) nothing is filtered.
+        // Otherwise an entry must match at least one checked type. Without an NPU
+        // the NPU box doesn't exist, so it counts as checked.
+        var wantGraphic = Plasmoid.configuration.filterGraphic
+        var wantCompute = Plasmoid.configuration.filterCompute
+        var wantNpu = Plasmoid.configuration.filterNpu || !root.hasNpu
+        if (!(wantGraphic && wantCompute && wantNpu)) {
+            var t = entry.type || []
+            var ok = (wantGraphic && t.indexOf("graphic") !== -1)
+                  || (wantCompute && t.indexOf("compute") !== -1)
+                  || (wantNpu && root.hasNpu && t.indexOf("npu") !== -1)
+            if (!ok) return false
+        }
         return true
     }
 

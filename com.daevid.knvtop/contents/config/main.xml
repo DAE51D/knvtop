@@ -38,9 +38,17 @@
         <entry name="filterUser" type="String">
             <default>All Users</default>
         </entry>
-        <entry name="filterType" type="String">
-            <!-- one of: both, graphic, compute, npu (npu only on hosts with an NPU) -->
-            <default>both</default>
+        <!-- Process type filter: a process is listed if it matches any checked type.
+             All checked (the default) lists everything. filterNpu only exists on
+             hosts with an NPU. Replaces the old single-choice "filterType". -->
+        <entry name="filterGraphic" type="Bool">
+            <default>true</default>
+        </entry>
+        <entry name="filterCompute" type="Bool">
+            <default>true</default>
+        </entry>
+        <entry name="filterNpu" type="Bool">
+            <default>true</default>
         </entry>
     </group>
 </kcfg>

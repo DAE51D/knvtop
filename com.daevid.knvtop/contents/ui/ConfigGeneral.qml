@@ -16,7 +16,9 @@ KCM.SimpleKCM {
     property alias cfg_showNpu: npuBox.checked
     property alias cfg_llmOnly: llmOnlyBox.checked
     property string cfg_filterUser
-    property string cfg_filterType
+    property alias cfg_filterGraphic: graphicBox.checked
+    property alias cfg_filterCompute: computeBox.checked
+    property alias cfg_filterNpu: npuTypeBox.checked
 
     // Populated from a live D-Bus query so the dropdown offers the users
     // actually seen right now (desktop user, service account, root, etc.),
@@ -116,18 +118,20 @@ KCM.SimpleKCM {
             onEditTextChanged: page.cfg_filterUser = editText
         }
 
-        QQC2.ComboBox {
-            id: typeBox
+        // A process is listed if it matches any checked type (all checked = no filter).
+        QQC2.CheckBox {
+            id: graphicBox
             Kirigami.FormData.label: "Filter by type:"
-            textRole: "label"
-            valueRole: "key"
-            model: [
-                { key: "both", label: "Both" },
-                { key: "graphic", label: "Graphic" },
-                { key: "compute", label: "Compute" }
-            ].concat(page.hasNpu ? [{ key: "npu", label: "NPU" }] : [])
-            currentIndex: Math.max(0, indexOfValue(page.cfg_filterType))
-            onActivated: page.cfg_filterType = currentValue
+            text: "Graphic"
+        }
+        QQC2.CheckBox {
+            id: computeBox
+            text: "Compute"
+        }
+        QQC2.CheckBox {
+            id: npuTypeBox
+            visible: page.hasNpu
+            text: "NPU"
         }
     }
 }
